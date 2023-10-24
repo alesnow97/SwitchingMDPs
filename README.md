@@ -1,1 +1,1 @@
-# SwitchingMDPs
+# SwitchingBandits
