@@ -29,6 +29,29 @@ def load_pomdp(pomdp_to_load_path, pomdp_num):
 
         return loaded_pomdp
 
+
+def load_pomdp_basic_info(pomdp_to_load_path, pomdp_num,
+                          state_discretization_step,
+                          action_discretization_step,
+                          min_action_prob):
+
+    base_path = pomdp_to_load_path + f"/pomdp{pomdp_num}/regret"
+    basic_info_path = f"/{state_discretization_step}stst_{action_discretization_step}acst_{min_action_prob}_minac/basic_info.json"
+    file_to_open_path = base_path + basic_info_path
+
+    if os.path.exists(pomdp_to_load_path):
+
+        f = open(file_to_open_path)
+        data = json.load(f)
+        # print(data)
+
+        return (np.array(data["discretized_belief_states"]),
+                np.array(data["discretized_action_space"]),
+                np.array(data["real_belief_action_belief"]),
+                np.array(data["real_optimal_belief_action_mapping"]),
+                np.array(data["initial_discretized_belief"]),
+                data["initial_discretized_belief_index"])
+
 # def compute_min_svd(reference_matrix):
 #     _, s, _ = np.linalg.svd(reference_matrix, full_matrices=True)
 #     print(f"Dimension of s is {len(s)}")

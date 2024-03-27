@@ -2,19 +2,20 @@ import numpy as np
 
 from pomdp_env.POMDP import POMDP
 from pomdp_env.pomdp_simulations_new import POMDPSimulationNew
-from utils import load_pomdp
+from utils import load_pomdp, load_pomdp_basic_info
 
 if __name__ == '__main__':
 
     # run settings
     save_pomdp_info = False
-    save_results = False
-    to_load = False
+    save_basic_info = True
+    save_results = True
+    to_load = True
+    to_load_pomdp_basic_info = False
 
     num_states = 3
     num_actions = 3
-    num_observations = 5
-    horizon = 100000
+    num_observations = 8
     num_experiments = 1
 
     # estimation error experiment
@@ -29,8 +30,8 @@ if __name__ == '__main__':
 
     non_normalized_min_transition_value = 0.2
     min_action_prob = 0.05
-    T_0 = 100000
-    num_episodes = 10
+    T_0 = 1000
+    num_episodes = 3
 
     pomdp_to_load_path = f"ICML_experiments/{num_states}states_{num_actions}actions_{num_observations}obs/"
     pomdp_num = 0
@@ -56,18 +57,46 @@ if __name__ == '__main__':
                                     loaded_pomdp=to_load,
                                     pomdp_num=0,
                                     save_pomdp_info=save_pomdp_info,
+                                    save_basic_info=save_basic_info,
                                     save_results=save_results
                                     )
 
-    simulation.run_regret_experiment(
-        num_experiments=num_experiments,
-        T_0=T_0,
-        num_episodes=num_episodes,
-        ext_v_i_stopping_cond=ext_v_i_stopping_cond,
-        state_discretization_step=state_discretization_step,
-        action_discretization_step=action_discretization_step,
-        min_action_prob=min_action_prob
-    )
+    if to_load_pomdp_basic_info:
+        (discretized_belief_states, discretized_action_space,
+         real_belief_action_belief, real_optimal_belief_action_mapping,
+         initial_discretized_belief, initial_discretized_belief_index) = (
+            load_pomdp_basic_info(
+            pomdp_to_load_path=pomdp_to_load_path,
+            pomdp_num=pomdp_num,
+            state_discretization_step=state_discretization_step,
+            action_discretization_step=action_discretization_step,
+            min_action_prob=min_action_prob
+        ))
+        simulation.run_regret_experiment(
+            num_experiments=num_experiments,
+            T_0=T_0,
+            num_episodes=num_episodes,
+            ext_v_i_stopping_cond=ext_v_i_stopping_cond,
+            state_discretization_step=state_discretization_step,
+            action_discretization_step=action_discretization_step,
+            min_action_prob=min_action_prob,
+            discretized_belief_states=discretized_belief_states,
+            discretized_action_space=discretized_action_space,
+            real_belief_action_belief=real_belief_action_belief,
+            real_optimal_belief_action_mapping=real_optimal_belief_action_mapping,
+            initial_discretized_belief=initial_discretized_belief,
+            initial_discretized_belief_index=initial_discretized_belief_index
+        )
+    else:
+        simulation.run_regret_experiment(
+            num_experiments=num_experiments,
+            T_0=T_0,
+            num_episodes=num_episodes,
+            ext_v_i_stopping_cond=ext_v_i_stopping_cond,
+            state_discretization_step=state_discretization_step,
+            action_discretization_step=action_discretization_step,
+            min_action_prob=min_action_prob
+        )
 
     print("Ciao")
 

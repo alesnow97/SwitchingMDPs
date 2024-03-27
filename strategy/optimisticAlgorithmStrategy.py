@@ -18,7 +18,9 @@ class OptimisticAlgorithmStrategy:
                  epsilon_state=0.2,
                  epsilon_action=0.1,
                  min_action_prob=0.1,
-                 delta=0.1
+                 delta=0.1,
+                 discretized_belief_states=None,
+                 discretized_action_space=None,
                  ):
 
         self.num_states = num_states
@@ -31,9 +33,14 @@ class OptimisticAlgorithmStrategy:
         self.min_action_prob = min_action_prob
         self.delta = delta
 
-        self.discretized_belief_states = utils.discretize_continuous_space(self.num_states, epsilon=epsilon_state)
-        self.discretized_action_space = utils.discretize_continuous_space(self.num_actions, epsilon=epsilon_action,
-                                                                          min_value=min_action_prob)
+        if discretized_belief_states is None:
+            self.discretized_belief_states = utils.discretize_continuous_space(self.num_states, epsilon=epsilon_state)
+            self.discretized_action_space = utils.discretize_continuous_space(self.num_actions, epsilon=epsilon_action,
+                                                                      min_value=min_action_prob)
+        else:
+            self.discretized_belief_states = discretized_belief_states
+            self.discretized_action_space = discretized_action_space
+
         self.len_discretized_beliefs = self.discretized_belief_states.shape[0]
         self.len_discretized_action_space = self.discretized_action_space.shape[0]
 
@@ -47,7 +54,7 @@ class OptimisticAlgorithmStrategy:
         #     self.num_states, self.num_states))
 
         self.init_policy()
-        self.collected_samples = []
+        self.collected_samples = None
 
         self.estimated_transition_matrix_per_episode = np.zeros(shape=(
             num_episodes, self.num_states, self.num_actions,
@@ -57,12 +64,17 @@ class OptimisticAlgorithmStrategy:
 
         for i in range(num_episodes):
 
-            estimated_transition_matrix, frobenious_norm = (
+            episode_collected_samples, estimated_transition_matrix, frobenious_norm = (
                 self.collect_samples_in_episode(
                 starting_state=current_state,
                 T_0=T_0,
                 episode_num=i
             ))
+
+            if self.collected_samples is None:
+                self.collected_samples = episode_collected_samples
+            else:
+                self.collected_samples = np.vstack([self.collected_samples, episode_collected_samples])
 
             self.estimated_transition_matrix_per_episode[i] = estimated_transition_matrix
             self.error_frobenious_norm_per_episode[i] = frobenious_norm
@@ -115,8 +127,9 @@ class OptimisticAlgorithmStrategy:
                                    -num_last_samples_for_belief_update:]
             )
 
-        return self.collected_samples
-        #return self.estimated_action_state_dist, self.estimated_transition_matrix, self.error_frobenious_norm
+        return (self.collected_samples,
+                self.estimated_transition_matrix_per_episode,
+                self.error_frobenious_norm_per_episode)
 
 
     def collect_samples_in_episode(self, starting_state, T_0, episode_num):
@@ -137,6 +150,8 @@ class OptimisticAlgorithmStrategy:
         num_total_samples = num_samples_to_discard + num_samples_in_episode
         first_state = starting_state
 
+        episode_collected_samples = np.zeros(shape=(2 * num_total_samples, 3))
+
         for sample_num in range(num_total_samples):
 
             first_action = self.policy.choose_action()
@@ -151,7 +166,8 @@ class OptimisticAlgorithmStrategy:
                 0].argmax()
 
             self.policy.update(first_action, first_obs)
-            self.collected_samples.append((first_action, first_obs))
+            episode_collected_samples[2*sample_num] = [first_action, first_obs, self.pomdp.possible_rewards[first_obs]]
+            #self.collected_samples.append((first_action, first_obs))
 
             second_action = self.policy.choose_action()
             second_obs = np.random.multinomial(
@@ -165,7 +181,10 @@ class OptimisticAlgorithmStrategy:
                 0].argmax()
 
             self.policy.update(second_action, second_obs)
-            self.collected_samples.append((second_action, second_obs))
+            episode_collected_samples[2 * sample_num + 1] = [second_action,
+                                                             second_obs,
+                                                             self.pomdp.possible_rewards[second_obs]]
+            # self.collected_samples.append((second_action, second_obs))
 
             if sample_num % 10000 == 0:
                 print(sample_num)
@@ -178,7 +197,9 @@ class OptimisticAlgorithmStrategy:
 
             first_state = next_state
 
-        return self.estimate_transition_matrix()
+        estimated_transition_matrix, frobenious_norm = self.estimate_transition_matrix()
+
+        return episode_collected_samples, estimated_transition_matrix, frobenious_norm
         # self.policy.update_transition_matrix(
         #     estimated_transition_matrix=estimated_trans_matrix)
 
@@ -280,3 +301,16 @@ class OptimisticAlgorithmStrategy:
             state_action_observation_matrix=self.pomdp.state_action_observation_matrix,
             no_info=True
         )
+
+    def generate_basic_info_dict(self):
+
+        experiment_basic_info = {
+            "discretized_belief_states": self.discretized_belief_states.tolist(),
+            "discretized_action_space": self.discretized_action_space.tolist(),
+            "ext_v_i_stopping_cond": self.ext_v_i_stopping_cond,
+            "epsilon_state": self.epsilon_state,
+            "epsilon_action": self.epsilon_action,
+            "min_action_prob": self.min_action_prob
+        }
+
+        return experiment_basic_info

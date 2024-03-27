@@ -91,11 +91,11 @@ class DiscretizedBeliefBasedPolicy(Policy, ABC):
         self.no_info = False
 
 
-    def update_belief_from_samples(self, action_obs_samples: list):
+    def update_belief_from_samples(self, action_obs_samples: np.ndarray):
         current_belief = np.ones(shape=self.num_states) / self.num_states
 
         for i in range(len(action_obs_samples)):
-            current_ac, current_obs = action_obs_samples[0][0], action_obs_samples[0][1]
+            current_ac, current_obs = int(action_obs_samples[0][0]), int(action_obs_samples[0][1])
             current_belief = self.continuous_update(
                 belief_value=current_belief,
                 pulled_arm=current_ac,
