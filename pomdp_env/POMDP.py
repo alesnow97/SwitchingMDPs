@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class POMDP:
 
     def __init__(self,
@@ -9,38 +10,59 @@ class POMDP:
                  state_action_transition_matrix,
                  state_action_observation_matrix,
                  possible_rewards,
+                 real_min_transition_value=None,
+                 non_normalized_min_transition_value=0.25,
                  transition_multiplier=0,
                  observation_multiplier=5):
         self.num_states = num_states
         self.num_actions = num_actions
         self.num_obs = num_observations
         self.possible_rewards = possible_rewards
+
+        self.non_normalized_min_transition_value = non_normalized_min_transition_value
+        self.min_transition_value = non_normalized_min_transition_value / self.num_states
+        self.real_min_transition_value = real_min_transition_value
+
         self.transition_multiplier = transition_multiplier
         self.observation_multiplier = observation_multiplier
         self.state_action_transition_matrix = state_action_transition_matrix
         self.state_action_observation_matrix = state_action_observation_matrix
 
+
         if self.state_action_transition_matrix is not None:
             self.state_action_transition_matrix = state_action_transition_matrix
             self.state_action_observation_matrix = state_action_observation_matrix
         else:
-            self.state_action_transition_matrix = self.generate_transition_matrix(transition_multiplier=transition_multiplier)
+            self.state_action_transition_matrix = self.generate_transition_matrix(transition_multiplier=transition_multiplier, min_transition_value=self.min_transition_value)
             self.state_action_observation_matrix = \
                 self.generate_state_action_reward_dist(observation_multiplier=observation_multiplier)
 
         # self.observation_state_matrix = self.compute_diagonal_observation_state_matrix()
         self.reference_matrix = self.compute_reference_matrix()
+        self.state_action_reward = self.compute_state_action_reward()
         # self.reference_matrix_original = self.compute_reference_matrix_original()
 
         print("Ciao")
 
 
-    def generate_transition_matrix(self, transition_multiplier):
+    def generate_transition_matrix(self, transition_multiplier, min_transition_value):
         # by setting specific design we give more probability to self-loops
         transition_matrix = None
         for state in range(self.num_states):
             state_actions_matrix = np.random.random((self.num_actions, self.num_states))
-            state_actions_matrix = state_actions_matrix / state_actions_matrix.sum(axis=1)[:, None]
+            state_actions_matrix = state_actions_matrix / state_actions_matrix.sum(
+                axis=1)[:, None]
+            if np.any(state_actions_matrix < min_transition_value):
+                modified_state_action_matrix = state_actions_matrix.copy()
+                counter = 1
+                while np.any(modified_state_action_matrix < min_transition_value):
+                    modified_state_action_matrix[state_actions_matrix < min_transition_value] = (
+                            min_transition_value + 0.05 * counter)
+                    modified_state_action_matrix = (modified_state_action_matrix /
+                                                    modified_state_action_matrix.sum(axis=1)[:, None])
+                    counter += 1
+                state_actions_matrix = modified_state_action_matrix
+
             if transition_matrix is None:
                 transition_matrix = state_actions_matrix
             else:
@@ -48,6 +70,7 @@ class POMDP:
         print(transition_matrix)
 
         reshaped_transition_matrix = transition_matrix.reshape((self.num_states, self.num_actions, self.num_states))
+        self.real_min_transition_value = reshaped_transition_matrix.min()
 
         return reshaped_transition_matrix
 
@@ -102,25 +125,36 @@ class POMDP:
             n=1, pvals=probs, size=1)[0].argmax()
         return current_reward
 
-    def compute_diagonal_observation_state_matrix(self):
-        row_dim = self.num_actions * self.num_obs
-        col_dim = self.num_actions * self.num_states
-        observation_state_big_matrix = np.zeros(shape=(row_dim, col_dim))
+    def compute_state_action_reward(self):
+        state_action_reward = np.zeros(shape=(self.num_states, self.num_actions))
+        for state in range(self.num_states):
+            for action in range(self.num_actions):
+                mean_reward = np.sum(
+                    self.possible_rewards *
+                    self.state_action_observation_matrix[state, action])
+                state_action_reward[state, action] = mean_reward
 
-        for action in range(self.num_actions):
-            state_observation_matrix = self.state_action_observation_matrix[:, action, :]
-            observation_state_matrix = state_observation_matrix.T
+        return state_action_reward
 
-            # kronecker product
-            # kron = np.kron(first_mode_observation_matrix.T, second_mode_observation_matrix.T)
-            row_index = action * self.num_obs
-            col_index = action * self.num_states
-            observation_state_big_matrix[row_index:row_index+self.num_obs, col_index:col_index+self.num_states] = observation_state_matrix
-
-        min_svd = self.compute_min_svd(observation_state_big_matrix)
-        print(f"min svd of observation mode big matrix is {min_svd}")
-
-        return observation_state_big_matrix
+    # def compute_diagonal_observation_state_matrix(self):
+    #     row_dim = self.num_actions * self.num_obs
+    #     col_dim = self.num_actions * self.num_states
+    #     observation_state_big_matrix = np.zeros(shape=(row_dim, col_dim))
+    #
+    #     for action in range(self.num_actions):
+    #         state_observation_matrix = self.state_action_observation_matrix[:, action, :]
+    #         observation_state_matrix = state_observation_matrix.T
+    #
+    #         # kronecker product
+    #         # kron = np.kron(first_mode_observation_matrix.T, second_mode_observation_matrix.T)
+    #         row_index = action * self.num_obs
+    #         col_index = action * self.num_states
+    #         observation_state_big_matrix[row_index:row_index+self.num_obs, col_index:col_index+self.num_states] = observation_state_matrix
+    #
+    #     min_svd = self.compute_min_svd(observation_state_big_matrix)
+    #     print(f"min svd of observation mode big matrix is {min_svd}")
+    #
+    #     return observation_state_big_matrix
 
 
     # def compute_reference_matrix(self):
@@ -149,7 +183,7 @@ class POMDP:
                 reference_matrix[row_index:row_index + self.num_obs ** 2,
                 col_index:col_index + self.num_states ** 2] = kron
 
-        # min_svd = compute_min_svd(reference_matrix)
+        self.min_svd_reference_matrix = self.compute_min_svd(reference_matrix)
         # print(f"min svd of reference matrix is {min_svd}")
 
         return reference_matrix
@@ -162,6 +196,8 @@ class POMDP:
 
         save_dict["transition_multiplier"] = self.transition_multiplier
         save_dict["observation_multiplier"] = self.observation_multiplier
+        save_dict["non_normalized_min_transition_value"] = self.non_normalized_min_transition_value
+        save_dict["real_min_transition_value"] = self.real_min_transition_value
 
         save_dict["state_action_transition_matrix"] = self.state_action_transition_matrix.tolist()
         save_dict["state_action_observation_matrix"] = self.state_action_observation_matrix.tolist()

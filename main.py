@@ -8,17 +8,29 @@ if __name__ == '__main__':
 
     # run settings
     save_pomdp_info = False
-    save_results = True
-    to_load = True
+    save_results = False
+    to_load = False
 
     num_states = 3
-    num_actions = 2
+    num_actions = 3
     num_observations = 5
-    #horizon = 10000000
+    horizon = 100000
     num_experiments = 1
+
+    # estimation error experiment
     num_samples_to_discard = 250
     num_samples_checkpoint = 20000
     num_checkpoints = 5
+
+    # regret experiment
+    ext_v_i_stopping_cond = 0.000001
+    state_discretization_step = 0.1
+    action_discretization_step = 0.05
+
+    non_normalized_min_transition_value = 0.2
+    min_action_prob = 0.05
+    T_0 = 100000
+    num_episodes = 10
 
     pomdp_to_load_path = f"ICML_experiments/{num_states}states_{num_actions}actions_{num_observations}obs/"
     pomdp_num = 0
@@ -33,6 +45,8 @@ if __name__ == '__main__':
             num_actions=num_actions,
             num_observations=num_observations,
             possible_rewards=possible_rewards,
+            real_min_transition_value=None,
+            non_normalized_min_transition_value=non_normalized_min_transition_value,
             state_action_transition_matrix=None,
             state_action_observation_matrix=None,
             observation_multiplier=10
@@ -45,19 +59,15 @@ if __name__ == '__main__':
                                     save_results=save_results
                                     )
 
-    simulation.run_estimation_error(num_experiments=num_experiments,
-                   num_samples_to_discard=num_samples_to_discard,
-                   num_samples_checkpoint=num_samples_checkpoint,
-                   num_checkpoints=num_checkpoints)
+    simulation.run_regret_experiment(
+        num_experiments=num_experiments,
+        T_0=T_0,
+        num_episodes=num_episodes,
+        ext_v_i_stopping_cond=ext_v_i_stopping_cond,
+        state_discretization_step=state_discretization_step,
+        action_discretization_step=action_discretization_step,
+        min_action_prob=min_action_prob
+    )
 
-    # check min_singular_value
     print("Ciao")
-
-
-    #simulation = EstimationErrorSimulation(switching_mdps=switching_mdp)
-    #simulation.run(horizon=horizon, num_experiments=1)
-
-
-
-
 
