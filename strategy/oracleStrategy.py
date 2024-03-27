@@ -1,3 +1,6 @@
+import json
+import os
+
 import numpy as np
 
 import utils
@@ -25,6 +28,7 @@ class OracleStrategy:
                  real_optimal_belief_action_mapping=None,
                  initial_discretized_belief=None,
                  initial_discretized_belief_index=None,
+                 save_path=None,
                  ):
 
         self.num_states = num_states
@@ -35,6 +39,8 @@ class OracleStrategy:
         self.epsilon_state = epsilon_state
         self.epsilon_action = epsilon_action
         self.min_action_prob = min_action_prob
+
+        self.save_path = save_path
 
         if discretized_belief_states is None:
             self.discretized_belief_states = utils.discretize_continuous_space(self.num_states, epsilon=epsilon_state)
@@ -105,7 +111,7 @@ class OracleStrategy:
         }
 
 
-    def run(self, T_0, num_episodes, initial_state):
+    def run(self, T_0, starting_episode_num, num_episodes, experiment_num, initial_state):
         current_state = initial_state
 
         # self.estimated_action_state_dist_per_episode = np.zeros(shape=(
@@ -114,7 +120,7 @@ class OracleStrategy:
 
         self.collected_samples = None
 
-        for i in range(num_episodes):
+        for i in range(starting_episode_num, starting_episode_num + num_episodes):
 
             episode_collected_samples, last_state = self.collect_samples_in_episode(
                 starting_state=current_state,
@@ -124,12 +130,16 @@ class OracleStrategy:
 
             current_state = last_state
 
-            if self.collected_samples is None:
-                self.collected_samples = episode_collected_samples
-            else:
-                self.collected_samples = np.vstack([self.collected_samples, episode_collected_samples])
+            self.collected_samples = episode_collected_samples
+            self.save_results(T_0=T_0, episode_num=i, experiment_num=experiment_num,
+                              starting_state=current_state)
 
-        return self.collected_samples
+            # if self.collected_samples is None:
+            #     self.collected_samples = episode_collected_samples
+            # else:
+            #     self.collected_samples = np.vstack([self.collected_samples, episode_collected_samples])
+
+        # return self.collected_samples
 
 
     def collect_samples_in_episode(self, starting_state, T_0, episode_num):
@@ -191,6 +201,38 @@ class OracleStrategy:
             first_state = next_state
 
         return episode_collected_samples, first_state
+
+
+    def save_results(self, T_0, episode_num, experiment_num, starting_state):
+
+        if isinstance(self.oracle_policy.discretized_belief_index, int):
+            index_to_store = self.oracle_policy.discretized_belief_index
+        else:
+            index_to_store = self.oracle_policy.discretized_belief_index.tolist()
+
+        result_dict = {
+            "starting_state": starting_state.tolist(),
+            "discretized_belief": self.oracle_policy.discretized_belief.tolist(),
+            "discretized_belief_index": index_to_store,
+            "collected_samples": self.collected_samples.tolist()
+        }
+
+        basic_info_path = f"/{self.epsilon_state}stst_{self.epsilon_action}acst_{self.min_action_prob}_minac/{T_0}_init"
+        dir_to_create_path = self.save_path + basic_info_path
+        if not os.path.exists(dir_to_create_path):
+            os.mkdir(dir_to_create_path)
+        f = open(
+            dir_to_create_path + f'/oracle_{episode_num}Ep_{experiment_num}Exp.json',
+            'w')
+        json_file = json.dumps(result_dict)
+        f.write(json_file)
+        f.close()
+        print(f"Oracle Results of episode {episode_num} and experiment {experiment_num} have been saved")
+
+    def restore_infos(self,
+                      loaded_data):
+        self.oracle_policy.discretized_belief = np.array(loaded_data["discretized_belief"])
+        self.oracle_policy.discretized_belief_index = loaded_data["discretized_belief_index"]
 
 
     def generate_basic_info_dict(self):

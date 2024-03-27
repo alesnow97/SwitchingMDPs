@@ -7,8 +7,10 @@ def compute_belief_action_belief_matrix(num_actions, num_obs,
                                         state_action_transition_matrix,
                                         state_action_observation_matrix):
     belief_action_belief_matrix = np.zeros(
-        shape=(len_discretized_beliefs, num_actions, len_discretized_beliefs))
+        shape=(len_discretized_beliefs, num_actions, len_discretized_beliefs), dtype=np.float16)
     for i in range(len_discretized_beliefs):
+        if i % 100 == 0:
+            print(i)
         current_belief = discretized_belief_states[i]
         for action in range(num_actions):
             # just for debug purposes
@@ -56,26 +58,59 @@ def compute_optimal_POMDP_policy(num_actions,
             raise ValueError("Convergence error")
         counter += 1
         new_u = np.zeros(shape=(len_discretized_beliefs))
+        print(f"Len of discretized belief is {len_discretized_beliefs}")
         for j in range(len_discretized_beliefs):
+            if j % 1000 == 0:
+                print(j)
             current_belief = discretized_belief_states[j]
-            current_u_a = np.zeros(shape=(len_discretized_action_space))
 
-            for z in range(len_discretized_action_space):
-
-                current_action_prob = discretized_action_space[z]
-                state_action_probs = np.outer(current_belief, current_action_prob)
-                mean_reward = np.multiply(state_action_reward, state_action_probs).sum()
-
-                current_action_belief = belief_action_belief_matrix[j, :, :]
-                current_belief_action_probs = np.multiply(current_action_belief, current_action_prob.reshape(-1, 1))
-                future_value_function_array = np.multiply(current_belief_action_probs, u.reshape(1, -1))
+            current_u_a = np.zeros(shape=num_actions)
+            for action in range(num_actions):
+                state_reward = state_action_reward[:, action]
+                mean_action_reward = np.multiply(current_belief, state_reward).sum()
+                current_belief_action_probs = belief_action_belief_matrix[j, action, :]
+                future_value_function_array = np.multiply(
+                    current_belief_action_probs, u.reshape(1, -1))
                 future_value_function = np.sum(future_value_function_array)
-
-                current_u_a[z] = mean_reward + future_value_function
+                current_u_a[action] = mean_action_reward + future_value_function
 
             best_action_dist_index = np.argmax(current_u_a)
-            best_action_dist_per_u[j] = discretized_action_space[best_action_dist_index]
-            new_u[j] = current_u_a[best_action_dist_index]
+            deterministic_action_prob = np.zeros(shape=num_actions)
+            deterministic_action_prob[best_action_dist_index] = 1
+
+            closest_action_dist, closest_action_dist_index = (
+                utils.find_closest_discretized_belief(
+                    discretized_action_space, deterministic_action_prob))
+
+            state_action_probs = np.outer(current_belief, closest_action_dist)
+            mean_reward = np.multiply(state_action_reward, state_action_probs).sum()
+
+            current_action_belief = belief_action_belief_matrix[j, :, :]
+            current_belief_action_probs = np.multiply(current_action_belief, closest_action_dist.reshape(-1, 1))
+            future_value_function_array = np.multiply(current_belief_action_probs, u.reshape(1, -1))
+            future_value_function = np.sum(future_value_function_array)
+
+            best_action_dist_per_u[j] = closest_action_dist
+            new_u[j] = mean_reward + future_value_function
+
+            # VERSION USING THE DISCRETIZED ACTION SPACE
+            # current_u_a = np.zeros(shape=(len_discretized_action_space))
+            # for z in range(len_discretized_action_space):
+            #
+            #     current_action_prob = discretized_action_space[z]
+            #     state_action_probs = np.outer(current_belief, current_action_prob)
+            #     mean_reward = np.multiply(state_action_reward, state_action_probs).sum()
+            #
+            #     current_action_belief = belief_action_belief_matrix[j, :, :]
+            #     current_belief_action_probs = np.multiply(current_action_belief, current_action_prob.reshape(-1, 1))
+            #     future_value_function_array = np.multiply(current_belief_action_probs, u.reshape(1, -1))
+            #     future_value_function = np.sum(future_value_function_array)
+            #
+            #     current_u_a[z] = mean_reward + future_value_function
+            #
+            # best_action_dist_index = np.argmax(current_u_a)
+            # best_action_dist_per_u[j] = discretized_action_space[best_action_dist_index]
+            # new_u[j] = current_u_a[best_action_dist_index]
 
         du = new_u - u
         print(du.max() - du.min())

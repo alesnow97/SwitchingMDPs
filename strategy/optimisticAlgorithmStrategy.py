@@ -1,3 +1,6 @@
+import json
+import os
+
 import numpy as np
 
 import utils
@@ -21,6 +24,7 @@ class OptimisticAlgorithmStrategy:
                  delta=0.1,
                  discretized_belief_states=None,
                  discretized_action_space=None,
+                 save_path=None,
                  ):
 
         self.num_states = num_states
@@ -32,6 +36,8 @@ class OptimisticAlgorithmStrategy:
         self.epsilon_action = epsilon_action
         self.min_action_prob = min_action_prob
         self.delta = delta
+
+        self.save_path = save_path
 
         if discretized_belief_states is None:
             self.discretized_belief_states = utils.discretize_continuous_space(self.num_states, epsilon=epsilon_state)
@@ -46,38 +52,42 @@ class OptimisticAlgorithmStrategy:
 
     # the values of samples to discard and samples per estimate refer to the number of couples,
     #  thus the timesteps need to be doubled
-    def run(self, T_0, num_episodes, initial_state):
+    def run(self, T_0, starting_episode_num, num_episodes, experiment_num, initial_state):
         current_state = initial_state
 
         # self.estimated_action_state_dist_per_episode = np.zeros(shape=(
         #     num_episodes, self.num_actions, self.num_actions,
         #     self.num_states, self.num_states))
 
-        self.init_policy()
-        self.collected_samples = None
+        if starting_episode_num == 0:
+            self.init_policy()
 
-        self.estimated_transition_matrix_per_episode = np.zeros(shape=(
-            num_episodes, self.num_states, self.num_actions,
-            self.num_states))
+        # self.estimated_transition_matrix_per_episode = np.zeros(shape=(
+        #     num_episodes, self.num_states, self.num_actions,
+        #     self.num_states))
+        #
+        # self.error_frobenious_norm_per_episode = np.empty(shape=num_episodes)
 
-        self.error_frobenious_norm_per_episode = np.empty(shape=num_episodes)
 
-        for i in range(num_episodes):
+        for i in range(starting_episode_num, starting_episode_num + num_episodes):
 
-            episode_collected_samples, estimated_transition_matrix, frobenious_norm = (
+            (episode_collected_samples, estimated_transition_matrix,
+             frobenious_norm, last_state) = (
                 self.collect_samples_in_episode(
                 starting_state=current_state,
                 T_0=T_0,
                 episode_num=i
             ))
 
-            if self.collected_samples is None:
-                self.collected_samples = episode_collected_samples
-            else:
-                self.collected_samples = np.vstack([self.collected_samples, episode_collected_samples])
+            current_state = last_state
+            self.collected_samples = episode_collected_samples
+            # if self.collected_samples is None:
+            #     self.collected_samples = episode_collected_samples
+            # else:
+            #     self.collected_samples = np.vstack([self.collected_samples, episode_collected_samples])
 
-            self.estimated_transition_matrix_per_episode[i] = estimated_transition_matrix
-            self.error_frobenious_norm_per_episode[i] = frobenious_norm
+            # self.estimated_transition_matrix_per_episode[i] = estimated_transition_matrix
+            # self.error_frobenious_norm_per_episode[i] = frobenious_norm
 
             current_confidence_bound = self.compute_confidence_bound(T_0=T_0, episode_num=i)
 
@@ -127,9 +137,19 @@ class OptimisticAlgorithmStrategy:
                                    -num_last_samples_for_belief_update:]
             )
 
-        return (self.collected_samples,
-                self.estimated_transition_matrix_per_episode,
-                self.error_frobenious_norm_per_episode)
+            self.save_results(T_0=T_0, episode_num=i,
+                              experiment_num=experiment_num,
+                              starting_state=current_state,
+                              optimistic_belief_action_belief_matrix=optimistic_belief_action_belief_matrix,
+                              optimistic_transition_matrix_mdp=optimistic_transition_matrix_mdp,
+                              optimistic_belief_action_mapping=optimistic_belief_action_mapping,
+                              estimated_transition_matrix=estimated_transition_matrix,
+                              frobenious_norm=frobenious_norm
+                              )
+
+        # return (self.collected_samples,
+        #         self.estimated_transition_matrix_per_episode,
+        #         self.error_frobenious_norm_per_episode)
 
 
     def collect_samples_in_episode(self, starting_state, T_0, episode_num):
@@ -199,7 +219,7 @@ class OptimisticAlgorithmStrategy:
 
         estimated_transition_matrix, frobenious_norm = self.estimate_transition_matrix()
 
-        return episode_collected_samples, estimated_transition_matrix, frobenious_norm
+        return episode_collected_samples, estimated_transition_matrix, frobenious_norm, first_state
         # self.policy.update_transition_matrix(
         #     estimated_transition_matrix=estimated_trans_matrix)
 
@@ -284,6 +304,64 @@ class OptimisticAlgorithmStrategy:
             reshaped_transition_matrix = modified_transition_matrix
 
         return reshaped_transition_matrix, frobenious_norm
+
+
+    def save_results(self, T_0, episode_num, experiment_num,
+                     starting_state,
+                     optimistic_belief_action_belief_matrix,
+                     optimistic_transition_matrix_mdp,
+                     optimistic_belief_action_mapping,
+                     estimated_transition_matrix,
+                     frobenious_norm
+                     ):
+
+        if isinstance(self.policy.discretized_belief_index, int):
+            index_to_store = self.policy.discretized_belief_index
+        else:
+            index_to_store = self.policy.discretized_belief_index.tolist()
+
+        result_dict = {
+            "starting_state": starting_state.tolist(),
+            "discretized_belief": self.policy.discretized_belief.tolist(),
+            "discretized_belief_index": index_to_store,
+            "optimistic_belief_action_belief_matrix": optimistic_belief_action_belief_matrix.tolist(),
+            "optimistic_transition_matrix_mdp": optimistic_transition_matrix_mdp.tolist(),
+            "optimistic_belief_action_mapping": optimistic_belief_action_mapping.tolist(),
+            "estimated_transition_matrix": estimated_transition_matrix.tolist(),
+            "frobenious_norm": frobenious_norm,
+            "collected_samples": self.collected_samples.tolist()
+        }
+
+        basic_info_path = f"/{self.epsilon_state}stst_{self.epsilon_action}acst_{self.min_action_prob}_minac/{T_0}_init"
+        dir_to_create_path = self.save_path + basic_info_path
+        if not os.path.exists(dir_to_create_path):
+            os.mkdir(dir_to_create_path)
+        f = open(
+            dir_to_create_path + f'/optimistic_{episode_num}Ep_{experiment_num}Exp.json',
+            'w')
+        json_file = json.dumps(result_dict)
+        f.write(json_file)
+        f.close()
+        print(f"Optimistic Results of episode {episode_num} and experiment {experiment_num} have been saved")
+
+
+    def restore_infos(self,
+                      loaded_data):
+        self.policy = DiscretizedBeliefBasedPolicy(
+            num_states=self.num_states,
+            num_actions=self.num_actions,
+            num_obs=self.num_obs,
+            initial_discretized_belief=None,
+            initial_discretized_belief_index=None,
+            discretized_beliefs=self.discretized_belief_states,
+            estimated_state_action_transition_matrix=np.array(loaded_data["optimistic_transition_matrix_mdp"]),
+            belief_action_dist_mapping=np.array(loaded_data["optimistic_belief_action_mapping"]),
+            state_action_observation_matrix=self.pomdp.state_action_observation_matrix,
+            no_info=False
+        )
+
+        self.policy.discretized_belief = np.array(loaded_data["discretized_belief"])
+        self.policy.discretized_belief_index = loaded_data["discretized_belief_index"]
 
 
     def init_policy(self):

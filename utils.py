@@ -13,6 +13,7 @@ def load_pomdp(pomdp_to_load_path, pomdp_num):
 
         f = open(pomdp_to_load_path + f'/pomdp{pomdp_num}/pomdp_info.json')
         data = json.load(f)
+        f.close()
         # print(data)
 
         loaded_pomdp = POMDP(num_states=data['num_states'],
@@ -69,7 +70,7 @@ def dispositions_with_repetitions(array_size, possible_values):
     # Generate all possible combinations with replacement
     combinations = product(range(possible_values), repeat=array_size)
     # Convert combinations to a NumPy array
-    result = np.array(list(combinations))
+    result = np.array(list(combinations), dtype=np.float16)
     return result
 
 
@@ -88,6 +89,9 @@ def discretize_continuous_space(array_size, epsilon, min_value=1.0):
                 discretized_beliefs = np.vstack([discretized_beliefs, combination])
 
     discretized_beliefs = discretized_beliefs / num_bins
+
+    print(f"Data type is {discretized_beliefs.dtype}")
+
 
     if min_value != 1.0:
         filtered_array = discretized_beliefs[discretized_beliefs.min(axis=1) >= min_value]

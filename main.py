@@ -7,9 +7,9 @@ from utils import load_pomdp, load_pomdp_basic_info
 if __name__ == '__main__':
 
     # run settings
-    all_new = False
+    all_new = True
     same_pomdp_diff_discr = False
-    sampe_pomdp_sampe_disc = True
+    same_pomdp_same_discr = False
 
     if all_new is True:
         save_pomdp_info = True
@@ -34,10 +34,10 @@ if __name__ == '__main__':
     run_oracle = True
     run_optimistic = True
 
-    num_states = 4
-    num_actions = 3
+    num_states = 2
+    num_actions = 6
     num_observations = 12
-    num_experiments = 5
+    num_experiments = 2
 
     # estimation error experiment
     num_samples_to_discard = 250
@@ -45,15 +45,16 @@ if __name__ == '__main__':
     num_checkpoints = 5
 
     # regret experiment
-    ext_v_i_stopping_cond = 0.0001
+    ext_v_i_stopping_cond = 0.0009
     state_discretization_step = 0.05
-    action_discretization_step = 0.05
+    action_discretization_step = 0.04
 
     non_normalized_min_transition_value = 0.2
-    min_action_prob = 0.05
+    min_action_prob = 0.04
     delta = 0.9
-    T_0 = 100000
-    num_episodes = 4
+    T_0 = 10000
+    starting_episode_num = 0
+    num_episodes = 2
 
     pomdp_to_load_path = f"ICML_experiments/{num_states}states_{num_actions}actions_{num_observations}obs/"
     pomdp_num = 1
@@ -77,7 +78,7 @@ if __name__ == '__main__':
 
     simulation = POMDPSimulationNew(pomdp,
                                     loaded_pomdp=to_load,
-                                    pomdp_num=0,
+                                    pomdp_num=pomdp_num,
                                     save_pomdp_info=save_pomdp_info,
                                     save_basic_info=save_basic_info,
                                     save_results=save_results
@@ -110,7 +111,8 @@ if __name__ == '__main__':
             initial_discretized_belief=initial_discretized_belief,
             initial_discretized_belief_index=initial_discretized_belief_index,
             run_oracle=run_oracle,
-            run_optimistic=run_optimistic
+            run_optimistic=run_optimistic,
+            starting_episode_num=starting_episode_num
         )
     else:
         simulation.run_regret_experiment(
@@ -123,7 +125,8 @@ if __name__ == '__main__':
             min_action_prob=min_action_prob,
             delta=delta,
             run_oracle=run_oracle,
-            run_optimistic=run_optimistic
+            run_optimistic=run_optimistic,
+            starting_episode_num=starting_episode_num
         )
 
     print("Ciao")
