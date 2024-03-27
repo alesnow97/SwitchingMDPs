@@ -217,8 +217,13 @@ class OracleStrategy:
             "collected_samples": self.collected_samples.tolist()
         }
 
-        basic_info_path = f"/{self.epsilon_state}stst_{self.epsilon_action}acst_{self.min_action_prob}_minac/{T_0}_init"
-        dir_to_create_path = self.save_path + basic_info_path
+        exp_path = self.save_path + f"/{self.epsilon_state}stst_{self.epsilon_action}acst_{self.min_action_prob}_minac"
+        if not os.path.exists(exp_path):
+            os.mkdir(exp_path)
+        dir_to_create_path = exp_path + f"/{T_0}_init"
+        #
+        # basic_info_path = f"/{self.epsilon_state}stst_{self.epsilon_action}acst_{self.min_action_prob}_minac/{T_0}_init"
+        # dir_to_create_path = self.save_path + basic_info_path
         if not os.path.exists(dir_to_create_path):
             os.mkdir(dir_to_create_path)
         f = open(

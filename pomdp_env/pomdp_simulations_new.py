@@ -218,6 +218,8 @@ class POMDPSimulationNew:
             epsilon_action=action_discretization_step,
             min_action_prob=min_action_prob,
             delta=delta,
+            discretized_belief_states=self.oracle_strategy.discretized_belief_states,
+            discretized_action_space=self.oracle_strategy.discretized_action_space,
             save_path=self.exp_type_path
         )
 
