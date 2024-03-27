@@ -161,6 +161,9 @@ class POMDPSimulationNew:
                               state_discretization_step: float,
                               action_discretization_step: float,
                               min_action_prob: float,
+                              delta: float,
+                              run_oracle: bool,
+                              run_optimistic: bool,
                               discretized_belief_states: np.ndarray = None,
                               discretized_action_space: np.ndarray = None,
                               real_belief_action_belief: np.ndarray = None,
@@ -173,10 +176,6 @@ class POMDPSimulationNew:
         self.generate_dirs(experiment_type="regret")
 
         pomdp_info_dict = self.pomdp.generate_pomdp_dict()
-
-        result_dict = {'T_0': T_0,
-                       'num_episodes': num_episodes,
-                       'num_experiments': num_experiments}
 
         # self.estimated_action_state_dist = np.zeros(shape=(num_experiments,
         #     num_checkpoints, self.num_actions, self.num_actions,
@@ -212,11 +211,12 @@ class POMDPSimulationNew:
             ext_v_i_stopping_cond=ext_v_i_stopping_cond,
             epsilon_state=state_discretization_step,
             epsilon_action=action_discretization_step,
-            min_action_prob=min_action_prob
+            min_action_prob=min_action_prob,
+            delta=delta
         )
 
         oracle_strategy_basic_info_dict = self.oracle_strategy.generate_basic_info_dict()
-        optimistic_strategy_basic_info_dict = self.optimistic_algorithm_strategy.generate_basic_info_dict()
+        # optimistic_strategy_basic_info_dict = self.optimistic_algorithm_strategy.generate_basic_info_dict()
 
         oracle_collected_samples = None
         optimistic_alg_collected_samples = None
@@ -232,38 +232,60 @@ class POMDPSimulationNew:
             initial_state = np.random.multinomial(1, np.ones(shape=self.num_states) / self.num_states, 1)[
                 0].argmax()
 
-            oracle_collected_samples_per_exp = self.oracle_strategy.run(
-                T_0=T_0,
-                num_episodes=num_episodes,
-                initial_state=initial_state,
-            )
+            if run_oracle is True:
+                oracle_collected_samples_per_exp = self.oracle_strategy.run(
+                    T_0=T_0,
+                    num_episodes=num_episodes,
+                    initial_state=initial_state,
+                )
 
-            opt_collected_samples_per_exp, estimated_trans_mat_per_exp, frobenious_norm_per_exp = (
-                self.optimistic_algorithm_strategy.run(
-                T_0=T_0,
-                num_episodes=num_episodes,
-                initial_state=initial_state,
-            ))
+                if oracle_collected_samples is None:
+                    num_collected_samples = \
+                    oracle_collected_samples_per_exp.shape[0]
+                    oracle_collected_samples = np.zeros(
+                        shape=(num_experiments, num_collected_samples, 3))
+                oracle_collected_samples[n] = oracle_collected_samples_per_exp
 
-            if oracle_collected_samples is None:
-                num_collected_samples = oracle_collected_samples_per_exp.shape[0]
-                oracle_collected_samples = np.zeros(shape=(num_experiments, num_collected_samples, 3))
-                optimistic_alg_collected_samples = np.zeros(shape=(num_experiments, num_collected_samples, 3))
+            if run_optimistic is True:
+                opt_collected_samples_per_exp, estimated_trans_mat_per_exp, frobenious_norm_per_exp = (
+                    self.optimistic_algorithm_strategy.run(
+                    T_0=T_0,
+                    num_episodes=num_episodes,
+                    initial_state=initial_state,
+                ))
 
-            oracle_collected_samples[n] = oracle_collected_samples_per_exp
-            optimistic_alg_collected_samples[n] = opt_collected_samples_per_exp
+                if optimistic_alg_collected_samples is None:
+                    num_collected_samples = opt_collected_samples_per_exp.shape[0]
+                    optimistic_alg_collected_samples = np.zeros(shape=(num_experiments, num_collected_samples, 3))
 
-            # oracle_collected_samples.append(oracle_collected_samples_per_exp)
-            # optimistic_alg_collected_samples.append(opt_collected_samples_per_exp)
-            estimated_transition_matrices[n] = estimated_trans_mat_per_exp
-            frobenious_norm_error[n] = frobenious_norm_per_exp
+                optimistic_alg_collected_samples[
+                    n] = opt_collected_samples_per_exp
 
-        result_dict = {
-            "oracle_collected_samples": oracle_collected_samples.tolist(),
-            "optimistic_alg_collected_samples": optimistic_alg_collected_samples.tolist(),
-            "estimated_transition_matrices": estimated_transition_matrices.tolist(),
-            "frobenious_norm_error": frobenious_norm_error.tolist()
-        }
+                # oracle_collected_samples.append(oracle_collected_samples_per_exp)
+                # optimistic_alg_collected_samples.append(opt_collected_samples_per_exp)
+                estimated_transition_matrices[n] = estimated_trans_mat_per_exp
+                frobenious_norm_error[n] = frobenious_norm_per_exp
+
+        oracle_result_dict = None
+        optimistic_result_dict = None
+        if run_oracle:
+            oracle_result_dict = {
+                'T_0': T_0,
+                'num_episodes': num_episodes,
+                'num_experiments': num_experiments,
+                "oracle_collected_samples": oracle_collected_samples.tolist(),
+            }
+
+        if run_optimistic:
+            optimistic_result_dict = {
+                'T_0': T_0,
+                'num_episodes': num_episodes,
+                'num_experiments': num_experiments,
+                "delta": delta,
+                "optimistic_alg_collected_samples": optimistic_alg_collected_samples.tolist(),
+                "estimated_transition_matrices": estimated_transition_matrices.tolist(),
+                "frobenious_norm_error": frobenious_norm_error.tolist()
+            }
 
         if not self.loaded_pomdp and self.save_pomdp_info:
             f = open(self.pomdp_dir_path + '/pomdp_info.json', 'w')
@@ -289,12 +311,21 @@ class POMDPSimulationNew:
             dir_to_create_path = self.exp_type_path + basic_info_path
             if os.path.exists(dir_to_create_path):
                 new_exp_index = len(os.listdir(dir_to_create_path))
-                f = open(
-                    dir_to_create_path + f'/{T_0}Init_{num_episodes}Ep_{new_exp_index-1}.json',
-                    'w')
-                json_file = json.dumps(result_dict)
-                f.write(json_file)
-                f.close()
-                print("Results have been saved")
+                if run_oracle:
+                    f = open(
+                        dir_to_create_path + f'/oracle_{np.log(T_0)}Init_{num_episodes}Ep_{num_experiments}Exp_{new_exp_index-1}.json',
+                        'w')
+                    json_file = json.dumps(oracle_result_dict)
+                    f.write(json_file)
+                    f.close()
+                    print("Oracle Results have been saved")
+                if run_optimistic:
+                    f = open(
+                        dir_to_create_path + f'/optimistic_{np.log(T_0)}Init_{num_episodes}Ep_{num_experiments}Exp_{new_exp_index-1}.json',
+                        'w')
+                    json_file = json.dumps(optimistic_result_dict)
+                    f.write(json_file)
+                    f.close()
+                    print("Optimistic Algorithm Results have been saved")
             else:
                 raise ValueError("The folder does not exist")

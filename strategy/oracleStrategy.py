@@ -195,13 +195,18 @@ class OracleStrategy:
 
     def generate_basic_info_dict(self):
 
+        if isinstance(self.initial_discretized_belief_index, int):
+            index_to_store = self.initial_discretized_belief_index
+        else:
+            index_to_store = self.initial_discretized_belief_index.tolist()
+
         experiment_basic_info = {
             "discretized_belief_states": self.discretized_belief_states.tolist(),
             "discretized_action_space": self.discretized_action_space.tolist(),
             "real_belief_action_belief": self.real_belief_action_belief.tolist(),
             "real_optimal_belief_action_mapping": self.real_optimal_belief_action_mapping.tolist(),
             "initial_discretized_belief": self.initial_discretized_belief.tolist(),
-            "initial_discretized_belief_index": self.initial_discretized_belief_index.tolist(),
+            "initial_discretized_belief_index": index_to_store,
             "ext_v_i_stopping_cond": self.ext_v_i_stopping_cond,
             "epsilon_state": self.epsilon_state,
             "epsilon_action": self.epsilon_action,

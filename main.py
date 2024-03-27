@@ -7,16 +7,37 @@ from utils import load_pomdp, load_pomdp_basic_info
 if __name__ == '__main__':
 
     # run settings
-    save_pomdp_info = False
-    save_basic_info = True
-    save_results = True
-    to_load = True
-    to_load_pomdp_basic_info = False
+    all_new = False
+    same_pomdp_diff_discr = False
+    sampe_pomdp_sampe_disc = True
 
-    num_states = 3
+    if all_new is True:
+        save_pomdp_info = True
+        save_basic_info = True
+        save_results = True
+        to_load = False
+        to_load_pomdp_basic_info = False
+    elif same_pomdp_diff_discr is True:
+        save_pomdp_info = False
+        save_basic_info = True
+        save_results = True
+        to_load = True
+        to_load_pomdp_basic_info = False
+    else:
+        save_pomdp_info = False
+        save_basic_info = False
+        save_results = True
+        to_load = True
+        to_load_pomdp_basic_info = True
+
+    # FARLO A MANOOO
+    run_oracle = True
+    run_optimistic = True
+
+    num_states = 4
     num_actions = 3
-    num_observations = 8
-    num_experiments = 1
+    num_observations = 12
+    num_experiments = 5
 
     # estimation error experiment
     num_samples_to_discard = 250
@@ -24,17 +45,18 @@ if __name__ == '__main__':
     num_checkpoints = 5
 
     # regret experiment
-    ext_v_i_stopping_cond = 0.000001
-    state_discretization_step = 0.1
+    ext_v_i_stopping_cond = 0.0001
+    state_discretization_step = 0.05
     action_discretization_step = 0.05
 
     non_normalized_min_transition_value = 0.2
     min_action_prob = 0.05
-    T_0 = 1000
-    num_episodes = 3
+    delta = 0.9
+    T_0 = 100000
+    num_episodes = 4
 
     pomdp_to_load_path = f"ICML_experiments/{num_states}states_{num_actions}actions_{num_observations}obs/"
-    pomdp_num = 0
+    pomdp_num = 1
 
     if to_load:
         pomdp = load_pomdp(pomdp_to_load_path, pomdp_num)
@@ -80,12 +102,15 @@ if __name__ == '__main__':
             state_discretization_step=state_discretization_step,
             action_discretization_step=action_discretization_step,
             min_action_prob=min_action_prob,
+            delta=delta,
             discretized_belief_states=discretized_belief_states,
             discretized_action_space=discretized_action_space,
             real_belief_action_belief=real_belief_action_belief,
             real_optimal_belief_action_mapping=real_optimal_belief_action_mapping,
             initial_discretized_belief=initial_discretized_belief,
-            initial_discretized_belief_index=initial_discretized_belief_index
+            initial_discretized_belief_index=initial_discretized_belief_index,
+            run_oracle=run_oracle,
+            run_optimistic=run_optimistic
         )
     else:
         simulation.run_regret_experiment(
@@ -95,7 +120,10 @@ if __name__ == '__main__':
             ext_v_i_stopping_cond=ext_v_i_stopping_cond,
             state_discretization_step=state_discretization_step,
             action_discretization_step=action_discretization_step,
-            min_action_prob=min_action_prob
+            min_action_prob=min_action_prob,
+            delta=delta,
+            run_oracle=run_oracle,
+            run_optimistic=run_optimistic
         )
 
     print("Ciao")

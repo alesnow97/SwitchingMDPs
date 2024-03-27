@@ -42,8 +42,6 @@ class POMDP:
         self.state_action_reward = self.compute_state_action_reward()
         # self.reference_matrix_original = self.compute_reference_matrix_original()
 
-        print("Ciao")
-
 
     def generate_transition_matrix(self, transition_multiplier, min_transition_value):
         # by setting specific design we give more probability to self-loops
@@ -67,7 +65,6 @@ class POMDP:
                 transition_matrix = state_actions_matrix
             else:
                 transition_matrix = np.concatenate([transition_matrix, state_actions_matrix], axis=0)
-        print(transition_matrix)
 
         reshaped_transition_matrix = transition_matrix.reshape((self.num_states, self.num_actions, self.num_states))
         self.real_min_transition_value = reshaped_transition_matrix.min()
@@ -106,7 +103,7 @@ class POMDP:
         state_action_reward_matrix = state_action_reward_matrix / state_action_reward_matrix.sum(axis=1)[:, None]
 
         min_svd = self.compute_min_svd(state_action_reward_matrix)
-        print(f"min svd of state action reward matrix is {min_svd}")
+        # print(f"min svd of state action observation matrix is {min_svd}")
 
         state_action_reward_tensor = state_action_reward_matrix.reshape((self.num_states, self.num_actions, self.num_obs))
 
@@ -184,7 +181,7 @@ class POMDP:
                 col_index:col_index + self.num_states ** 2] = kron
 
         self.min_svd_reference_matrix = self.compute_min_svd(reference_matrix)
-        # print(f"min svd of reference matrix is {min_svd}")
+        print(f"Min svd of reference matrix is {self.min_svd_reference_matrix}")
 
         return reference_matrix
 
@@ -210,6 +207,5 @@ class POMDP:
 
     def compute_min_svd(self, reference_matrix):
         _, s, _ = np.linalg.svd(reference_matrix, full_matrices=True)
-        print(f"Dimension of s is {len(s)}")
         return min(s)
 

@@ -121,7 +121,7 @@ class OptimisticAlgorithmStrategy:
                 belief_action_dist_mapping=optimistic_belief_action_mapping
             )
 
-            num_last_samples_for_belief_update = 40 + int(np.log(T_0 * 2**i))
+            num_last_samples_for_belief_update = 50 + int(np.log(T_0 * 2**i))
             self.policy.update_belief_from_samples(
                 action_obs_samples=self.collected_samples[
                                    -num_last_samples_for_belief_update:]
@@ -215,7 +215,7 @@ class OptimisticAlgorithmStrategy:
         eps_iota_sq = np.power(min_transition_value * min_action_prob, 3/2)
 
         # first_term = 4 / (alpha**2 * eps_iota_sq)
-        first_term = 4 / np.sqrt(eps_iota_sq)
+        first_term = 1 / np.sqrt(eps_iota_sq)
         second_term = np.sqrt(1 + np.log(np.max((episode_num, 1))**3/self.delta)) / np.sqrt(T_0 * 2**episode_num)
 
         # this is the bound in frobenious norm
