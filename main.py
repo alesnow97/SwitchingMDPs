@@ -33,7 +33,6 @@ if __name__ == '__main__':
     # same_pomdp_same_discr = False
 
     run_settings = args.run_settings
-    print("Ciaoooo")
 
     if run_settings == '0': # it corresponds to all new
         save_pomdp_info = True

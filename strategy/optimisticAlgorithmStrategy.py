@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 import numpy as np
 
@@ -98,6 +99,7 @@ class OptimisticAlgorithmStrategy:
                     min_transition_value=self.pomdp.min_transition_value
                 ))
 
+            start_time = time.time()
             # compute belief action belief matrix from the optimistic mdp
             optimistic_belief_action_belief_matrix = (
                 strategy_helper.compute_belief_action_belief_matrix(
@@ -108,7 +110,11 @@ class OptimisticAlgorithmStrategy:
                     state_action_transition_matrix=optimistic_transition_matrix_mdp,
                     state_action_observation_matrix=self.pomdp.state_action_observation_matrix
                 ))
+            end_time = time.time()
+            compute_belief_action_list_time = end_time - start_time
+            print(f"Compute_belief_action_list time is {compute_belief_action_list_time}")
 
+            start_time = time.time()
             optimistic_belief_action_mapping = strategy_helper.compute_optimal_POMDP_policy(
                 num_actions=self.num_actions,
                 discretized_belief_states=self.discretized_belief_states,
@@ -118,6 +124,9 @@ class OptimisticAlgorithmStrategy:
                 state_action_reward=self.pomdp.state_action_reward,
                 belief_action_belief_matrix=optimistic_belief_action_belief_matrix
             )
+            end_time = time.time()
+            optimal_POMDP_policy_time = end_time - start_time
+            print(f"Optimal_POMDP_policy_time is {optimal_POMDP_policy_time}")
 
             self.policy.update_policy_infos(
                 state_action_transition_matrix=optimistic_transition_matrix_mdp,
@@ -317,7 +326,7 @@ class OptimisticAlgorithmStrategy:
             "starting_state": starting_state.tolist(),
             "discretized_belief": self.policy.discretized_belief.tolist(),
             "discretized_belief_index": index_to_store,
-            "optimistic_belief_action_belief_matrix": optimistic_belief_action_belief_matrix.tolist(),
+            "optimistic_belief_action_belief_matrix": optimistic_belief_action_belief_matrix,  #.tolist(),
             "optimistic_transition_matrix_mdp": optimistic_transition_matrix_mdp.tolist(),
             "optimistic_belief_action_mapping": optimistic_belief_action_mapping.tolist(),
             "estimated_transition_matrix": estimated_transition_matrix.tolist(),

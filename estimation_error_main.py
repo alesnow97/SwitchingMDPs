@@ -1,4 +1,3 @@
-import argparse
 
 import numpy as np
 
@@ -6,55 +5,25 @@ from pomdp_env.POMDP import POMDP
 from pomdp_env.pomdp_simulations_new import POMDPSimulationNew
 from utils import load_pomdp, load_pomdp_basic_info
 
-parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--num_states', help='Number of states', type=int, default=None)
-parser.add_argument('--num_actions', help='Number of actions', type=int, default=None)
-parser.add_argument('--num_obs', help='Number of observations', type=int, default=None)
-parser.add_argument('--num_experiments', help='Number of experiments', type=int, default=None)
-parser.add_argument('--run_settings', help='Run settings', type=str, default='all_new',
-                    choices=['all_new', 'same_pomdp_diff_discr', 'same_pomdp_same_discr'])
-
-
-
-
-parser.add_argument('--command', help='Command to execute.', type=str, default='launch', choices=['launch', 'view', 'stop'])
-# Experiment selection
-parser.add_argument('--name', help='Name of the experiment', type=str, default=None)
-parser.add_argument('--dir', help='Directory from which to load the experiment (to launch).', type=str, default=None)
-# Env
-parser.add_argument('--condaenv', help='Conda environment to activate.', type=str, default=None)
-parser.add_argument('--pythonv', help='Python version to use', type=str, default='python3')
-parser.add_argument('--pythonpath', help='Pythonpath to use for script.', type=str, default=None)
-parser.add_argument('--cuda_devices', help='CUDA visible devices.', type=str, default='')
-# Sacred
-parser.add_argument('--sacred', action='store_true', default=False, help='Enable sacred.')
-parser.add_argument('--sacred_dir', help='Dir used by sacred to log.', type=str, default=None)
-parser.add_argument('--sacred_slack', help='Config file for slack.', type=str, default=None)
-parser.add_argument('--dirty', action='store_true', default=False, help='Enable sacred dirty running.')
-args = parser.parse_args()
 
 if __name__ == '__main__':
 
-    # run settings
-    # all_new = True
-    # same_pomdp_diff_discr = False
-    # same_pomdp_same_discr = False
+    run_settings = '0'
 
-    run_settings = args.run_settings
-
-    if run_settings == 'all_new':
+    if run_settings == '0':  # it corresponds to all new
         save_pomdp_info = True
         save_basic_info = True
         save_results = True
         to_load = False
         to_load_pomdp_basic_info = False
-    elif run_settings == 'same_pomdp_diff_discr':
+    elif run_settings == '1':  # it corresponds to same_pomdp_diff_discr
         save_pomdp_info = False
         save_basic_info = True
         save_results = True
         to_load = True
         to_load_pomdp_basic_info = False
-    elif run_settings == 'same_pomdp_same_discr':
+        # elif run_settings == 'same_pomdp_same_discr':
+    else:
         save_pomdp_info = False
         save_basic_info = False
         save_results = True
@@ -65,10 +34,10 @@ if __name__ == '__main__':
     run_oracle = True
     run_optimistic = True
 
-    num_states = args.num_states
-    num_actions = args.num_actions
-    num_observations = args.num_obs
-    num_experiments = args.num_experiments
+    num_states = 4
+    num_actions = 6
+    num_observations = 10
+    num_experiments = 2
 
     # estimation error experiment
     num_samples_to_discard = 250
@@ -77,7 +46,7 @@ if __name__ == '__main__':
 
     # regret experiment
     ext_v_i_stopping_cond = 0.005
-    state_discretization_step = 0.04
+    state_discretization_step = 0.05
 
     non_normalized_min_transition_value = 0.05
     min_action_prob = 0.02

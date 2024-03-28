@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 import numpy as np
 from itertools import product, combinations_with_replacement
@@ -64,38 +65,22 @@ def compute_second_eigenvalue(transition_matrix):
     return max(evals)
 
 
-def dispositions_with_repetitions(array_size, possible_values):
-    # Generate all possible combinations with replacement
-    combinations = product(range(possible_values), repeat=array_size)
-    # Convert combinations to a NumPy array
-    result = np.array(list(combinations), dtype=np.float16)
-    return result
+def discretize_continuous_space(array_size, epsilon):
 
-
-def discretize_continuous_space(array_size, epsilon, min_value=1.0):
-
+    print("Discretizing continuous state space")
     num_bins = int((1 / epsilon))
-    all_combinations = dispositions_with_repetitions(array_size=array_size, possible_values=num_bins + 1)
+    all_combinations = product(range(num_bins + 1), repeat=array_size)
+    start_time = time.time()
 
-    discretized_beliefs = None
-    for combination in all_combinations:
-        #digit_array = int_to_array(combination, num_states, num_bins)
-        if combination.sum() == num_bins:
-            if discretized_beliefs is None:
-                discretized_beliefs = combination.reshape(1, -1)
-            else:
-                discretized_beliefs = np.vstack([discretized_beliefs, combination])
+    good_combinations = np.array(list(filter(lambda x: sum(x) == num_bins, all_combinations)), dtype=np.float16)
 
-    discretized_beliefs = discretized_beliefs / num_bins
+    end_time = time.time()
+    execution_time = end_time - start_time
+    print(f"Execution time is {execution_time}")
+    print(good_combinations.shape)
+    discretized_beliefs = good_combinations / num_bins
 
-    print(f"Data type is {discretized_beliefs.dtype}")
-
-
-    if min_value != 1.0:
-        filtered_array = discretized_beliefs[discretized_beliefs.min(axis=1) >= min_value]
-        return filtered_array
-    else:
-        return discretized_beliefs
+    return discretized_beliefs
 
 
 def find_closest_discretized_belief(discretized_beliefs, continuous_belief):

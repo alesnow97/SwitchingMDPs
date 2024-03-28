@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 import numpy as np
 
@@ -42,6 +43,7 @@ class OracleStrategy:
             self.discretized_belief_states = utils.discretize_continuous_space(self.num_states, epsilon=epsilon_state)
             self.len_discretized_beliefs = self.discretized_belief_states.shape[0]
 
+            start_time = time.time()
             self.real_belief_action_belief = strategy_helper.compute_belief_action_belief_matrix(
                 num_actions=self.num_actions,
                 num_obs=self.num_obs,
@@ -50,6 +52,12 @@ class OracleStrategy:
                 state_action_transition_matrix=self.pomdp.state_action_transition_matrix,
                 state_action_observation_matrix=self.pomdp.state_action_observation_matrix
             )
+
+            end_time = time.time()
+            compute_belief_action_list_time = end_time - start_time
+            print(f"Compute_belief_action_list time is {compute_belief_action_list_time}")
+
+            start_time = time.time()
 
             self.real_optimal_belief_action_mapping = strategy_helper.compute_optimal_POMDP_policy(
                 num_actions=self.num_actions,
@@ -60,6 +68,10 @@ class OracleStrategy:
                 state_action_reward=self.pomdp.state_action_reward,
                 belief_action_belief_matrix=self.real_belief_action_belief
             )
+            end_time = time.time()
+            optimal_POMDP_policy_time = end_time - start_time
+            print(f"Optimal_POMDP_policy_time is {optimal_POMDP_policy_time}")
+
 
             uniform_initial_belief = np.ones(shape=self.num_states) / self.num_states
             self.initial_discretized_belief, self.initial_discretized_belief_index = utils.find_closest_discretized_belief(
@@ -89,7 +101,7 @@ class OracleStrategy:
 
         self.experiment_info = {
             "discretized_belief_states": self.discretized_belief_states.tolist(),
-            "real_belief_action_belief": self.real_belief_action_belief.tolist(),
+            "real_belief_action_belief": self.real_belief_action_belief,  #.tolist(),
             "real_optimal_belief_action_mapping": self.real_optimal_belief_action_mapping.tolist(),
             "initial_discretized_belief": self.initial_discretized_belief.tolist(),
             "initial_discretized_belief_index": self.initial_discretized_belief_index,
@@ -237,7 +249,7 @@ class OracleStrategy:
 
         experiment_basic_info = {
             "discretized_belief_states": self.discretized_belief_states.tolist(),
-            "real_belief_action_belief": self.real_belief_action_belief.tolist(),
+            "real_belief_action_belief": self.real_belief_action_belief,  #.tolist(),
             "real_optimal_belief_action_mapping": self.real_optimal_belief_action_mapping.tolist(),
             "initial_discretized_belief": self.initial_discretized_belief.tolist(),
             "initial_discretized_belief_index": index_to_store,
