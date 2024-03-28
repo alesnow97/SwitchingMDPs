@@ -4,7 +4,6 @@ import os
 import numpy as np
 
 import utils
-import time
 
 from policies.discretized_belief_based_policy import \
     DiscretizedBeliefBasedPolicy
@@ -20,10 +19,8 @@ class OracleStrategy:
                  pomdp,
                  ext_v_i_stopping_cond=0.02,
                  epsilon_state=0.2,
-                 epsilon_action=0.1,
                  min_action_prob=0.1,
                  discretized_belief_states=None,
-                 discretized_action_space=None,
                  real_belief_action_belief=None,
                  real_optimal_belief_action_mapping=None,
                  initial_discretized_belief=None,
@@ -37,17 +34,13 @@ class OracleStrategy:
         self.pomdp = pomdp
         self.ext_v_i_stopping_cond = ext_v_i_stopping_cond
         self.epsilon_state = epsilon_state
-        self.epsilon_action = epsilon_action
         self.min_action_prob = min_action_prob
 
         self.save_path = save_path
 
         if discretized_belief_states is None:
             self.discretized_belief_states = utils.discretize_continuous_space(self.num_states, epsilon=epsilon_state)
-            self.discretized_action_space = utils.discretize_continuous_space(self.num_actions, epsilon=epsilon_action,
-                                                                              min_value=min_action_prob)
             self.len_discretized_beliefs = self.discretized_belief_states.shape[0]
-            self.len_discretized_action_space = self.discretized_action_space.shape[0]
 
             self.real_belief_action_belief = strategy_helper.compute_belief_action_belief_matrix(
                 num_actions=self.num_actions,
@@ -61,10 +54,9 @@ class OracleStrategy:
             self.real_optimal_belief_action_mapping = strategy_helper.compute_optimal_POMDP_policy(
                 num_actions=self.num_actions,
                 discretized_belief_states=self.discretized_belief_states,
-                discretized_action_space=self.discretized_action_space,
                 len_discretized_beliefs=self.len_discretized_beliefs,
-                len_discretized_action_space=self.len_discretized_action_space,
                 ext_v_i_stopping_cond=self.ext_v_i_stopping_cond,
+                min_action_prob=self.min_action_prob,
                 state_action_reward=self.pomdp.state_action_reward,
                 belief_action_belief_matrix=self.real_belief_action_belief
             )
@@ -76,9 +68,7 @@ class OracleStrategy:
         else:
             # data come from a loaded file
             self.discretized_belief_states = discretized_belief_states
-            self.discretized_action_space = discretized_action_space
             self.len_discretized_beliefs = self.discretized_belief_states.shape[0]
-            self.len_discretized_action_space = self.discretized_action_space.shape[0]
             self.real_belief_action_belief = real_belief_action_belief
             self.real_optimal_belief_action_mapping = real_optimal_belief_action_mapping
             self.initial_discretized_belief = initial_discretized_belief
@@ -99,14 +89,12 @@ class OracleStrategy:
 
         self.experiment_info = {
             "discretized_belief_states": self.discretized_belief_states.tolist(),
-            "discretized_action_space": self.discretized_action_space.tolist(),
             "real_belief_action_belief": self.real_belief_action_belief.tolist(),
             "real_optimal_belief_action_mapping": self.real_optimal_belief_action_mapping.tolist(),
             "initial_discretized_belief": self.initial_discretized_belief.tolist(),
             "initial_discretized_belief_index": self.initial_discretized_belief_index,
             "ext_v_i_stopping_cond": self.ext_v_i_stopping_cond,
             "epsilon_state": self.epsilon_state,
-            "epsilon_action": self.epsilon_action,
             "min_action_prob": self.min_action_prob
         }
 
@@ -217,7 +205,7 @@ class OracleStrategy:
             "collected_samples": self.collected_samples.tolist()
         }
 
-        exp_path = self.save_path + f"/{self.epsilon_state}stst_{self.epsilon_action}acst_{self.min_action_prob}_minac"
+        exp_path = self.save_path + f"/{self.epsilon_state}stst_{self.min_action_prob}_minac"
         if not os.path.exists(exp_path):
             os.mkdir(exp_path)
         dir_to_create_path = exp_path + f"/{T_0}_init"
@@ -249,14 +237,12 @@ class OracleStrategy:
 
         experiment_basic_info = {
             "discretized_belief_states": self.discretized_belief_states.tolist(),
-            "discretized_action_space": self.discretized_action_space.tolist(),
             "real_belief_action_belief": self.real_belief_action_belief.tolist(),
             "real_optimal_belief_action_mapping": self.real_optimal_belief_action_mapping.tolist(),
             "initial_discretized_belief": self.initial_discretized_belief.tolist(),
             "initial_discretized_belief_index": index_to_store,
             "ext_v_i_stopping_cond": self.ext_v_i_stopping_cond,
             "epsilon_state": self.epsilon_state,
-            "epsilon_action": self.epsilon_action,
             "min_action_prob": self.min_action_prob
         }
 

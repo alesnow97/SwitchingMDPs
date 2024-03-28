@@ -45,11 +45,13 @@ if __name__ == '__main__':
 
     print(os.getcwd())
 
-    base_path = ('ICML_experiments/4states_3actions_12obs/pomdp1/regret/'
-                         '0.05stst_0.05acst_0.05_minac')
+    base_path = ('ICML_experiments/4states_6actions_12obs/pomdp1/regret/'
+                         '0.05stst_0.02_minac')
 
     basic_info_path = base_path + "/basic_info.json"
     exps_info_path = base_path + "/10000_init"
+    num_experiments = 2
+    num_episodes = 2
 
     # paths_to_read_from = ['ICML_experiments/4states_3actions_12obs/pomdp1/regret',
     #                       'experiments/5states_4actions_5obs/buono_5exp__lastexp/exp4']
@@ -60,10 +62,10 @@ if __name__ == '__main__':
     oracle_collected_samples = None
     optimistic_collected_samples = None
 
-    for experiment_num in range(2):
+    for experiment_num in range(num_experiments):
         current_exp_oracle_data = None
         current_exp_optimistic_data = None
-        for episode_num in range(2):
+        for episode_num in range(num_episodes):
             print(f"Experiment {experiment_num} and episode {episode_num}")
 
             # oracle
@@ -111,7 +113,7 @@ if __name__ == '__main__':
     lower_bound, upper_bound = ci2(mean_cumulated_regret,
                                    std_cumulative_regret, 2)
 
-    x_axis = [i for i in range(difference_array.shape[0])]
+    x_axis = [i for i in range(difference_array.shape[1])]
 
     axs.plot(mean_cumulated_regret, 'c', label='OUR')
     axs.fill_between(x_axis,

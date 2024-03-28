@@ -40,10 +40,9 @@ def compute_belief_action_belief_matrix(num_actions, num_obs,
 
 def compute_optimal_POMDP_policy(num_actions,
                                  discretized_belief_states,
-                                 discretized_action_space,
                                  len_discretized_beliefs,
-                                 len_discretized_action_space,
                                  ext_v_i_stopping_cond,
+                                 min_action_prob,
                                  state_action_reward,
                                  belief_action_belief_matrix):
 
@@ -75,22 +74,18 @@ def compute_optimal_POMDP_policy(num_actions,
                 current_u_a[action] = mean_action_reward + future_value_function
 
             best_action_dist_index = np.argmax(current_u_a)
-            deterministic_action_prob = np.zeros(shape=num_actions)
-            deterministic_action_prob[best_action_dist_index] = 1
+            best_action_dist_prob = np.ones(shape=num_actions) * min_action_prob
+            best_action_dist_prob[best_action_dist_index] = 1 - ((num_actions - 1) * min_action_prob)
 
-            closest_action_dist, closest_action_dist_index = (
-                utils.find_closest_discretized_belief(
-                    discretized_action_space, deterministic_action_prob))
-
-            state_action_probs = np.outer(current_belief, closest_action_dist)
+            state_action_probs = np.outer(current_belief, best_action_dist_prob)
             mean_reward = np.multiply(state_action_reward, state_action_probs).sum()
 
             current_action_belief = belief_action_belief_matrix[j, :, :]
-            current_belief_action_probs = np.multiply(current_action_belief, closest_action_dist.reshape(-1, 1))
+            current_belief_action_probs = np.multiply(current_action_belief, best_action_dist_prob.reshape(-1, 1))
             future_value_function_array = np.multiply(current_belief_action_probs, u.reshape(1, -1))
             future_value_function = np.sum(future_value_function_array)
 
-            best_action_dist_per_u[j] = closest_action_dist
+            best_action_dist_per_u[j] = best_action_dist_prob
             new_u[j] = mean_reward + future_value_function
 
             # VERSION USING THE DISCRETIZED ACTION SPACE
@@ -149,7 +144,7 @@ def inner_maximization(p_sa_hat, confidence_bound_p_sa, rank, min_transition_val
 def compute_optimistic_MDP(
         num_states,
         num_actions,
-        discretized_action_space,
+        min_action_prob,
         state_action_transition_matrix,
         ext_v_i_stopping_cond,
         state_action_reward,
@@ -186,13 +181,22 @@ def compute_optimistic_MDP(
                 q_s_per_action[ac] = q_sa
                 p_tilde[st, ac] = p_sa_tilde
 
-            q_s_action_dist = np.sum(np.multiply(discretized_action_space, q_s_per_action), axis=1)
-            q_s_action_dist = q_s_action_dist.reshape(-1)
+            # best_action_dist_index = np.argmax(current_u_a)
+            # best_action_dist_prob = np.ones(shape=num_actions) * min_action_prob
+            # best_action_dist_prob[best_action_dist_index] = 1 - ((num_actions - 1) * min_action_prob)
 
-            max_action_dist_index = np.argmax(q_s_action_dist)
-            best_action_dist_per_state[st] = discretized_action_space[max_action_dist_index]
+            best_action_index = np.argmax(q_s_per_action)
+            # q_s_action_dist = np.sum(np.multiply(discretized_action_space, q_s_per_action), axis=1)
+            # q_s_action_dist = q_s_action_dist.reshape(-1)
 
-            new_u[st] = q_s_action_dist[max_action_dist_index]
+            best_action_dist = np.ones(shape=num_actions) * min_action_prob
+            best_action_dist[best_action_index] = 1 - ((num_actions - 1) * min_action_prob)
+
+            # max_action_dist_index = np.argmax(q_s_action_dist)
+            # best_action_dist_per_state[st] = discretized_action_space[max_action_dist_index]
+
+            best_q_sa = np.sum(np.multiply(best_action_dist, q_s_per_action))
+            new_u[st] = best_q_sa
 
         du = new_u - u
         u = new_u

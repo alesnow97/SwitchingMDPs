@@ -159,14 +159,12 @@ class POMDPSimulationNew:
                               num_episodes: int,
                               ext_v_i_stopping_cond: float,
                               state_discretization_step: float,
-                              action_discretization_step: float,
                               min_action_prob: float,
                               delta: float,
                               run_oracle: bool,
                               run_optimistic: bool,
                               starting_episode_num: int = 0,
                               discretized_belief_states: np.ndarray = None,
-                              discretized_action_space: np.ndarray = None,
                               real_belief_action_belief: np.ndarray = None,
                               real_optimal_belief_action_mapping: np.ndarray = None,
                               initial_discretized_belief: np.ndarray = None,
@@ -176,7 +174,6 @@ class POMDPSimulationNew:
         # disable this for the moment
         self.generate_dirs(experiment_type="regret")
         self.state_discretization_step = state_discretization_step
-        self.action_discretization_step = action_discretization_step
         self.min_action_prob = min_action_prob
 
         pomdp_info_dict = self.pomdp.generate_pomdp_dict()
@@ -197,10 +194,8 @@ class POMDPSimulationNew:
             pomdp=self.pomdp,
             ext_v_i_stopping_cond=ext_v_i_stopping_cond,
             epsilon_state=state_discretization_step,
-            epsilon_action=action_discretization_step,
             min_action_prob=min_action_prob,
             discretized_belief_states=discretized_belief_states,
-            discretized_action_space=discretized_action_space,
             real_belief_action_belief=real_belief_action_belief,
             real_optimal_belief_action_mapping=real_optimal_belief_action_mapping,
             initial_discretized_belief=initial_discretized_belief,
@@ -215,11 +210,9 @@ class POMDPSimulationNew:
             pomdp=self.pomdp,
             ext_v_i_stopping_cond=ext_v_i_stopping_cond,
             epsilon_state=state_discretization_step,
-            epsilon_action=action_discretization_step,
             min_action_prob=min_action_prob,
             delta=delta,
             discretized_belief_states=self.oracle_strategy.discretized_belief_states,
-            discretized_action_space=self.oracle_strategy.discretized_action_space,
             save_path=self.exp_type_path
         )
 
@@ -257,13 +250,6 @@ class POMDPSimulationNew:
                     initial_state=oracle_starting_state,
                 )
 
-                # if oracle_collected_samples is None:
-                #     num_collected_samples = \
-                #     oracle_collected_samples_per_exp.shape[0]
-                #     oracle_collected_samples = np.zeros(
-                #         shape=(num_experiments, num_collected_samples, 3))
-                # oracle_collected_samples[n] = oracle_collected_samples_per_exp
-
             if run_optimistic is True:
                 self.optimistic_algorithm_strategy.run(
                     T_0=T_0,
@@ -273,38 +259,6 @@ class POMDPSimulationNew:
                     initial_state=optimistic_starting_state,
                 )
 
-                # if optimistic_alg_collected_samples is None:
-                #     num_collected_samples = opt_collected_samples_per_exp.shape[0]
-                #     optimistic_alg_collected_samples = np.zeros(shape=(num_experiments, num_collected_samples, 3))
-                #
-                # optimistic_alg_collected_samples[
-                #     n] = opt_collected_samples_per_exp
-
-                # oracle_collected_samples.append(oracle_collected_samples_per_exp)
-                # optimistic_alg_collected_samples.append(opt_collected_samples_per_exp)
-                # estimated_transition_matrices[n] = estimated_trans_mat_per_exp
-                # frobenious_norm_error[n] = frobenious_norm_per_exp
-
-        # oracle_result_dict = None
-        # optimistic_result_dict = None
-        # if run_oracle:
-        #     oracle_result_dict = {
-        #         'T_0': T_0,
-        #         'num_episodes': num_episodes,
-        #         'num_experiments': num_experiments,
-        #         "oracle_collected_samples": oracle_collected_samples.tolist(),
-        #     }
-        #
-        # if run_optimistic:
-        #     optimistic_result_dict = {
-        #         'T_0': T_0,
-        #         'num_episodes': num_episodes,
-        #         'num_experiments': num_experiments,
-        #         "delta": delta,
-        #         "optimistic_alg_collected_samples": optimistic_alg_collected_samples.tolist(),
-        #         "estimated_transition_matrices": estimated_transition_matrices.tolist(),
-        #         "frobenious_norm_error": frobenious_norm_error.tolist()
-        #     }
 
         if not self.loaded_pomdp and self.save_pomdp_info:
             f = open(self.pomdp_dir_path + '/pomdp_info.json', 'w')
@@ -313,7 +267,7 @@ class POMDPSimulationNew:
             f.close()
 
         if discretized_belief_states is None and self.save_basic_info:
-            basic_info_path = f"/{state_discretization_step}stst_{action_discretization_step}acst_{min_action_prob}_minac"
+            basic_info_path = f"/{state_discretization_step}stst_{min_action_prob}_minac"
             dir_to_create_path = self.exp_type_path + basic_info_path
             if not os.path.exists(dir_to_create_path):
                 os.mkdir(dir_to_create_path)
@@ -352,7 +306,7 @@ class POMDPSimulationNew:
 
     def restore_infos(self, T_0, starting_episode_num, run_oracle, run_optimistic, experiment_num):
 
-        basic_info_path = f"/{self.state_discretization_step}stst_{self.action_discretization_step}acst_{self.min_action_prob}_minac/{T_0}_init"
+        basic_info_path = f"/{self.state_discretization_step}stst_{self.min_action_prob}_minac/{T_0}_init"
         dir_to_read_path = self.exp_type_path + basic_info_path
 
         oracle_starting_state = None

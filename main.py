@@ -34,8 +34,8 @@ if __name__ == '__main__':
     run_oracle = True
     run_optimistic = True
 
-    num_states = 2
-    num_actions = 4
+    num_states = 4
+    num_actions = 6
     num_observations = 12
     num_experiments = 2
 
@@ -45,14 +45,13 @@ if __name__ == '__main__':
     num_checkpoints = 5
 
     # regret experiment
-    ext_v_i_stopping_cond = 0.0009
-    state_discretization_step = 0.05
-    action_discretization_step = 0.04
+    ext_v_i_stopping_cond = 0.005
+    state_discretization_step = 0.04
 
-    non_normalized_min_transition_value = 0.2
-    min_action_prob = 0.04
+    non_normalized_min_transition_value = 0.05
+    min_action_prob = 0.02
     delta = 0.9
-    T_0 = 10000
+    T_0 = 5000
     starting_episode_num = 0
     num_episodes = 2
 
@@ -85,14 +84,13 @@ if __name__ == '__main__':
                                     )
 
     if to_load_pomdp_basic_info:
-        (discretized_belief_states, discretized_action_space,
+        (discretized_belief_states,
          real_belief_action_belief, real_optimal_belief_action_mapping,
          initial_discretized_belief, initial_discretized_belief_index) = (
             load_pomdp_basic_info(
             pomdp_to_load_path=pomdp_to_load_path,
             pomdp_num=pomdp_num,
             state_discretization_step=state_discretization_step,
-            action_discretization_step=action_discretization_step,
             min_action_prob=min_action_prob
         ))
         simulation.run_regret_experiment(
@@ -101,11 +99,9 @@ if __name__ == '__main__':
             num_episodes=num_episodes,
             ext_v_i_stopping_cond=ext_v_i_stopping_cond,
             state_discretization_step=state_discretization_step,
-            action_discretization_step=action_discretization_step,
             min_action_prob=min_action_prob,
             delta=delta,
             discretized_belief_states=discretized_belief_states,
-            discretized_action_space=discretized_action_space,
             real_belief_action_belief=real_belief_action_belief,
             real_optimal_belief_action_mapping=real_optimal_belief_action_mapping,
             initial_discretized_belief=initial_discretized_belief,
@@ -121,7 +117,6 @@ if __name__ == '__main__':
             num_episodes=num_episodes,
             ext_v_i_stopping_cond=ext_v_i_stopping_cond,
             state_discretization_step=state_discretization_step,
-            action_discretization_step=action_discretization_step,
             min_action_prob=min_action_prob,
             delta=delta,
             run_oracle=run_oracle,

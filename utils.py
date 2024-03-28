@@ -33,11 +33,10 @@ def load_pomdp(pomdp_to_load_path, pomdp_num):
 
 def load_pomdp_basic_info(pomdp_to_load_path, pomdp_num,
                           state_discretization_step,
-                          action_discretization_step,
                           min_action_prob):
 
     base_path = pomdp_to_load_path + f"/pomdp{pomdp_num}/regret"
-    basic_info_path = f"/{state_discretization_step}stst_{action_discretization_step}acst_{min_action_prob}_minac/basic_info.json"
+    basic_info_path = f"/{state_discretization_step}stst_{min_action_prob}_minac/basic_info.json"
     file_to_open_path = base_path + basic_info_path
 
     if os.path.exists(pomdp_to_load_path):
@@ -47,7 +46,6 @@ def load_pomdp_basic_info(pomdp_to_load_path, pomdp_num,
         # print(data)
 
         return (np.array(data["discretized_belief_states"]),
-                np.array(data["discretized_action_space"]),
                 np.array(data["real_belief_action_belief"]),
                 np.array(data["real_optimal_belief_action_mapping"]),
                 np.array(data["initial_discretized_belief"]),

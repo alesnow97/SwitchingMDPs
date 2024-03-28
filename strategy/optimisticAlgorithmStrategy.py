@@ -19,11 +19,9 @@ class OptimisticAlgorithmStrategy:
                  pomdp,
                  ext_v_i_stopping_cond=0.02,
                  epsilon_state=0.2,
-                 epsilon_action=0.1,
                  min_action_prob=0.1,
                  delta=0.1,
                  discretized_belief_states=None,
-                 discretized_action_space=None,
                  save_path=None,
                  ):
 
@@ -33,7 +31,6 @@ class OptimisticAlgorithmStrategy:
         self.pomdp = pomdp
         self.ext_v_i_stopping_cond = ext_v_i_stopping_cond
         self.epsilon_state = epsilon_state
-        self.epsilon_action = epsilon_action
         self.min_action_prob = min_action_prob
         self.delta = delta
 
@@ -41,14 +38,11 @@ class OptimisticAlgorithmStrategy:
 
         if discretized_belief_states is None:
             self.discretized_belief_states = utils.discretize_continuous_space(self.num_states, epsilon=epsilon_state)
-            self.discretized_action_space = utils.discretize_continuous_space(self.num_actions, epsilon=epsilon_action,
-                                                                      min_value=min_action_prob)
+
         else:
             self.discretized_belief_states = discretized_belief_states
-            self.discretized_action_space = discretized_action_space
 
         self.len_discretized_beliefs = self.discretized_belief_states.shape[0]
-        self.len_discretized_action_space = self.discretized_action_space.shape[0]
 
     # the values of samples to discard and samples per estimate refer to the number of couples,
     #  thus the timesteps need to be doubled
@@ -96,7 +90,7 @@ class OptimisticAlgorithmStrategy:
                 strategy_helper.compute_optimistic_MDP(
                     num_states=self.num_states,
                     num_actions=self.num_actions,
-                    discretized_action_space=self.discretized_action_space,
+                    min_action_prob=self.min_action_prob,
                     state_action_transition_matrix=estimated_transition_matrix,
                     ext_v_i_stopping_cond=self.ext_v_i_stopping_cond,
                     state_action_reward=self.pomdp.state_action_reward,
@@ -118,10 +112,9 @@ class OptimisticAlgorithmStrategy:
             optimistic_belief_action_mapping = strategy_helper.compute_optimal_POMDP_policy(
                 num_actions=self.num_actions,
                 discretized_belief_states=self.discretized_belief_states,
-                discretized_action_space=self.discretized_action_space,
                 len_discretized_beliefs=self.len_discretized_beliefs,
-                len_discretized_action_space=self.len_discretized_action_space,
                 ext_v_i_stopping_cond=self.ext_v_i_stopping_cond,
+                min_action_prob=self.min_action_prob,
                 state_action_reward=self.pomdp.state_action_reward,
                 belief_action_belief_matrix=optimistic_belief_action_belief_matrix
             )
@@ -332,7 +325,7 @@ class OptimisticAlgorithmStrategy:
             "collected_samples": self.collected_samples.tolist()
         }
 
-        basic_info_path = f"/{self.epsilon_state}stst_{self.epsilon_action}acst_{self.min_action_prob}_minac/{T_0}_init"
+        basic_info_path = f"/{self.epsilon_state}stst_{self.min_action_prob}_minac/{T_0}_init"
         dir_to_create_path = self.save_path + basic_info_path
         if not os.path.exists(dir_to_create_path):
             os.mkdir(dir_to_create_path)
@@ -384,10 +377,8 @@ class OptimisticAlgorithmStrategy:
 
         experiment_basic_info = {
             "discretized_belief_states": self.discretized_belief_states.tolist(),
-            "discretized_action_space": self.discretized_action_space.tolist(),
             "ext_v_i_stopping_cond": self.ext_v_i_stopping_cond,
             "epsilon_state": self.epsilon_state,
-            "epsilon_action": self.epsilon_action,
             "min_action_prob": self.min_action_prob
         }
 
