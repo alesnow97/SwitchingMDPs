@@ -34,7 +34,7 @@ if __name__ == '__main__':
     run_oracle = True
     run_optimistic = True
 
-    num_states = 4
+    num_states = 5
     num_actions = 6
     num_observations = 12
     num_experiments = 2
