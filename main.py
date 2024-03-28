@@ -64,6 +64,7 @@ if __name__ == '__main__':
     num_observations = args.num_obs
     num_experiments = args.num_experiments
 
+
     # estimation error experiment
     # num_samples_to_discard = 250
     # num_samples_checkpoint = 20000
