@@ -13,8 +13,8 @@ parser.add_argument('--num_obs', help='Number of observations', type=int, defaul
 parser.add_argument('--num_experiments', help='Number of experiments', type=int, default=None)
 parser.add_argument('--num_episodes', help='Number of episodes', type=int, default=None)
 parser.add_argument('--T_0', help='First episode length', type=int, default=None)
-parser.add_argument('--run_settings', help='Run settings', type=str, default='all_new',
-                    choices=['all_new', 'same_pomdp_diff_discr', 'same_pomdp_same_discr'])
+parser.add_argument('--run_settings', help='Run settings', type=str, default='0',
+                    choices=['0', '1', '2'])
 parser.add_argument('--non_normalized_min_transition_value', help='Non normalized min_transition_value', type=float, default=None)
 parser.add_argument('--min_action_prob', help='Min action probability', type=float, default=None)
 parser.add_argument('--delta', help='Confidence level', type=float, default=0.9)
@@ -35,13 +35,13 @@ if __name__ == '__main__':
     run_settings = args.run_settings
     print("Ciaoooo")
 
-    if run_settings == 'all_new':
+    if run_settings == '0': # it corresponds to all new
         save_pomdp_info = True
         save_basic_info = True
         save_results = True
         to_load = False
         to_load_pomdp_basic_info = False
-    elif run_settings == 'same_pomdp_diff_discr':
+    elif run_settings == '1':  # it corresponds to same_pomdp_diff_discr
         save_pomdp_info = False
         save_basic_info = True
         save_results = True
