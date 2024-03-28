@@ -45,11 +45,11 @@ if __name__ == '__main__':
 
     print(os.getcwd())
 
-    base_path = ('ICML_experiments/4states_6actions_12obs/pomdp1/regret/'
-                         '0.05stst_0.02_minac')
+    base_path = ('ICML_experiments/3states_6actions_12obs/pomdp0/regret/'
+                         '0.04stst_0.02_minac')
 
     basic_info_path = base_path + "/basic_info.json"
-    exps_info_path = base_path + "/10000_init"
+    exps_info_path = base_path + "/5000_init"
     num_experiments = 2
     num_episodes = 2
 
