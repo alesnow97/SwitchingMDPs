@@ -8,6 +8,8 @@ from matplotlib import ticker
 from scipy.stats import t
 import json
 
+import tikzplotlib
+
 plt.style.use('fivethirtyeight')
 sns.set_style(rc={"figure.facecolor":"white"})
 
@@ -24,7 +26,7 @@ sns.set_style(rc={"figure.facecolor":"white"})
 #                     "lines.linewidth": 4,
 #                     })
 
-def ci2(mean, std, n, conf=0.9):
+def ci2(mean, std, n, conf=0.7):
     # Calculate the t-value
     t_value = t.ppf(1 - conf, n - 1)
 
@@ -36,6 +38,8 @@ def ci2(mean, std, n, conf=0.9):
     upper_bound = mean + margin_error
     return lower_bound, upper_bound
 
+np.random.seed(200)
+
 
 if __name__ == '__main__':
     # algorithms_to_use = ['sliding_w_UCB', 'epsilon_greedy', 'exp3S',
@@ -45,81 +49,39 @@ if __name__ == '__main__':
 
     print(os.getcwd())
 
-    base_path = ('ICML_experiments/4states_6actions_10obs/pomdp25/regret/'
-                         '0.05stst_0.02_minac')
+    base_path = ('ICML_experiments_error/8states_5actions_15obs/pomdp4/estimation_error')
 
-    basic_info_path = base_path + "/basic_info.json"
-    exps_info_path = base_path + "/5000_init"
-    num_experiments = 5
-    num_episodes = 4
+    num_checkpoints = 40
+    checkpoint_size = 250000      # number of couples
 
-    # paths_to_read_from = ['ICML_experiments/4states_3actions_12obs/pomdp1/regret',
-    #                       'experiments/5states_4actions_5obs/buono_5exp__lastexp/exp4']
+    basic_info_path = base_path + f"/{checkpoint_size}_{num_checkpoints}cp_0.json"
 
     fig, axs = plt.subplots(1, 1, figsize=(20, 6))  # , sharex=True, sharey=True)
     # plot_titles = ['(a)', '(b)']
 
-    oracle_collected_samples = None
-    optimistic_collected_samples = None
 
-    for experiment_num in range(num_experiments):
-        current_exp_oracle_data = None
-        current_exp_optimistic_data = None
-        for episode_num in range(num_episodes):
-            print(f"Experiment {experiment_num} and episode {episode_num}")
+    f = open(basic_info_path)
+    data = json.load(f)
+    f.close()
+    frobenious_norm = np.array(data["error_frobenious_norm"])
 
-            # oracle
-            f = open(exps_info_path + f'/oracle_{episode_num}Ep_{experiment_num}Exp.json')
-            data = json.load(f)
-            f.close()
-            current_oracle_collected_samples = np.array(data["collected_samples"])
+    print(frobenious_norm.shape)
 
-            # optimistic algorithm
-            f = open(exps_info_path + f'/optimistic_{episode_num}Ep_{experiment_num}Exp.json')
-            data = json.load(f)
-            f.close()
-            current_optimistic_collected_samples = np.array(data["collected_samples"])
+    mean_frobenious = frobenious_norm.mean(axis=0)
+    std_frobenious = frobenious_norm.std(axis=0)
+    lower_bound, upper_bound = ci2(mean_frobenious,
+                                   std_frobenious, frobenious_norm.shape[0])
 
-            if current_exp_oracle_data is None:
-                current_exp_oracle_data = current_oracle_collected_samples
-            else:
-                current_exp_oracle_data = np.vstack([current_exp_oracle_data, current_oracle_collected_samples])
+    x_axis = np.array([checkpoint_size*(i+1) for i in range(num_checkpoints)])
+    x_axis_mask = np.array([i > 10 for i in range(num_checkpoints)])
 
-            if current_exp_optimistic_data is None:
-                current_exp_optimistic_data = current_optimistic_collected_samples
-            else:
-                current_exp_optimistic_data = np.vstack([current_exp_optimistic_data,
-                                                      current_optimistic_collected_samples])
+    # axs.plot(x_axis[x_axis_mask], mean_frobenious[x_axis_mask], 'c', label='OAS-UCRL')
+    axs.plot(x_axis[x_axis_mask], mean_frobenious[x_axis_mask], 'c', label='OAS-UCRL')
+    # axs.fill_between(x_axis,
+    #                     lower_bound,
+    #                     upper_bound,
+    #                     color='c', alpha=.2)
 
-        if oracle_collected_samples is None:
-            oracle_collected_samples = current_exp_oracle_data[:, 2].reshape(-1, 1)
-        else:
-            oracle_collected_samples = np.hstack(
-                [oracle_collected_samples, current_exp_oracle_data[:, 2].reshape(-1, 1)])
-
-        if optimistic_collected_samples is None:
-            optimistic_collected_samples = current_exp_optimistic_data[:, 2].reshape(-1, 1)
-        else:
-            optimistic_collected_samples = np.hstack(
-                [optimistic_collected_samples, current_exp_optimistic_data[:, 2].reshape(-1, 1)])
-
-
-    difference_array = oracle_collected_samples - optimistic_collected_samples
-    difference_array = difference_array.T
-
-    cumulative_regret = np.cumsum(difference_array, axis=1)
-    mean_cumulated_regret = np.mean(cumulative_regret, axis=0)
-    std_cumulative_regret = np.std(cumulative_regret, axis=0)
-    lower_bound, upper_bound = ci2(mean_cumulated_regret,
-                                   std_cumulative_regret, 2)
-
-    x_axis = [i for i in range(difference_array.shape[1])]
-
-    axs.plot(mean_cumulated_regret, 'c', label='OUR')
-    axs.fill_between(x_axis,
-                        lower_bound,
-                        upper_bound,
-                        color='c', alpha=.2)
     axs.legend()
     plt.tight_layout()
     plt.show()

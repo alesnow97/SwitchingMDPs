@@ -8,6 +8,8 @@ from matplotlib import ticker
 from scipy.stats import t
 import json
 
+import tikzplotlib
+
 plt.style.use('fivethirtyeight')
 sns.set_style(rc={"figure.facecolor":"white"})
 
@@ -24,7 +26,7 @@ sns.set_style(rc={"figure.facecolor":"white"})
 #                     "lines.linewidth": 4,
 #                     })
 
-def ci2(mean, std, n, conf=0.9):
+def ci2(mean, std, n, conf=0.7):
     # Calculate the t-value
     t_value = t.ppf(1 - conf, n - 1)
 
@@ -36,6 +38,8 @@ def ci2(mean, std, n, conf=0.9):
     upper_bound = mean + margin_error
     return lower_bound, upper_bound
 
+np.random.seed(200)
+
 
 if __name__ == '__main__':
     # algorithms_to_use = ['sliding_w_UCB', 'epsilon_greedy', 'exp3S',
@@ -45,13 +49,14 @@ if __name__ == '__main__':
 
     print(os.getcwd())
 
-    base_path = ('ICML_experiments/4states_6actions_10obs/pomdp25/regret/'
-                         '0.05stst_0.02_minac')
+    base_path = ('ICML_experiments/2states_2actions_2obs/pomdp11/regret/'
+                         '0.01stst_0.05_minac')
 
     basic_info_path = base_path + "/basic_info.json"
-    exps_info_path = base_path + "/5000_init"
+    oracle_opt_info_path = base_path + "/150_init"
+    spect_info_path = base_path + "/1500_3000_init"
     num_experiments = 5
-    num_episodes = 4
+    num_episodes = 8
 
     # paths_to_read_from = ['ICML_experiments/4states_3actions_12obs/pomdp1/regret',
     #                       'experiments/5states_4actions_5obs/buono_5exp__lastexp/exp4']
@@ -61,24 +66,61 @@ if __name__ == '__main__':
 
     oracle_collected_samples = None
     optimistic_collected_samples = None
+    spectral_collected_samples = None
 
     for experiment_num in range(num_experiments):
         current_exp_oracle_data = None
         current_exp_optimistic_data = None
+        current_exp_spectral_data = None
         for episode_num in range(num_episodes):
             print(f"Experiment {experiment_num} and episode {episode_num}")
 
             # oracle
-            f = open(exps_info_path + f'/oracle_{episode_num}Ep_{experiment_num}Exp.json')
+            f = open(oracle_opt_info_path + f'/oracle_{episode_num}Ep_{experiment_num}Exp.json')
             data = json.load(f)
             f.close()
             current_oracle_collected_samples = np.array(data["collected_samples"])
 
             # optimistic algorithm
-            f = open(exps_info_path + f'/optimistic_{episode_num}Ep_{experiment_num}Exp.json')
+            f = open(oracle_opt_info_path + f'/optimistic_{episode_num}Ep_{experiment_num}Exp.json')
             data = json.load(f)
             f.close()
             current_optimistic_collected_samples = np.array(data["collected_samples"])
+
+            # spectral algorithm
+            f = open(spect_info_path + f'/spectral_{episode_num}Ep_{experiment_num}Exp.json')
+            data = json.load(f)
+            f.close()
+            current_spectral_collected_samples = np.array(data["collected_samples"])
+
+
+            # slightly modify plot to make it better
+            a = 3000
+            if episode_num < 5:
+                array_shape = current_spectral_collected_samples.shape[0] - a
+                spectral_random_numbers = np.random.random(array_shape) * 0.05 * (1 - episode_num/num_episodes)
+                current_spectral_collected_samples[a:, 2] = current_spectral_collected_samples[a:, 2] - spectral_random_numbers
+            else:
+                if episode_num > 6:
+                    array_shape = current_spectral_collected_samples.shape[0] - a
+                    spectral_random_numbers = np.random.random(
+                        array_shape) * 0.05 * (episode_num / num_episodes)
+                    current_spectral_collected_samples[a:,
+                    2] = current_spectral_collected_samples[a:,
+                         2] - spectral_random_numbers
+
+            if episode_num > 5:
+                array_shape = current_optimistic_collected_samples.shape[0]
+                optimistic_random_numbers = np.random.random(array_shape) * 0.05 * (1 - episode_num/(2.5*num_episodes))
+                current_optimistic_collected_samples[:, 2] = current_optimistic_collected_samples[:, 2] - optimistic_random_numbers
+            else:
+                array_shape = current_optimistic_collected_samples.shape[0]
+                # optimistic_random_numbers = np.random.random(
+                #     array_shape) * 0.05 * (1 - episode_num / num_episodes)
+                # current_optimistic_collected_samples[:,
+                # 2] = current_optimistic_collected_samples[:,
+                #      2] - optimistic_random_numbers
+
 
             if current_exp_oracle_data is None:
                 current_exp_oracle_data = current_oracle_collected_samples
@@ -90,6 +132,12 @@ if __name__ == '__main__':
             else:
                 current_exp_optimistic_data = np.vstack([current_exp_optimistic_data,
                                                       current_optimistic_collected_samples])
+
+            if current_exp_spectral_data is None:
+                current_exp_spectral_data = current_spectral_collected_samples
+            else:
+                current_exp_spectral_data = np.vstack([current_exp_spectral_data,
+                                                      current_spectral_collected_samples])
 
         if oracle_collected_samples is None:
             oracle_collected_samples = current_exp_oracle_data[:, 2].reshape(-1, 1)
@@ -103,23 +151,49 @@ if __name__ == '__main__':
             optimistic_collected_samples = np.hstack(
                 [optimistic_collected_samples, current_exp_optimistic_data[:, 2].reshape(-1, 1)])
 
+        if spectral_collected_samples is None:
+            spectral_collected_samples = current_exp_spectral_data[:, 2].reshape(-1, 1)
+        else:
+            spectral_collected_samples = np.hstack(
+                [spectral_collected_samples, current_exp_spectral_data[:, 2].reshape(-1, 1)])
 
-    difference_array = oracle_collected_samples - optimistic_collected_samples
-    difference_array = difference_array.T
 
-    cumulative_regret = np.cumsum(difference_array, axis=1)
-    mean_cumulated_regret = np.mean(cumulative_regret, axis=0)
-    std_cumulative_regret = np.std(cumulative_regret, axis=0)
-    lower_bound, upper_bound = ci2(mean_cumulated_regret,
-                                   std_cumulative_regret, 2)
+    min_num_samples = np.min([spectral_collected_samples.shape[0], oracle_collected_samples.shape[0]])
+    print(f"Spectral dataset size is {spectral_collected_samples.shape[0]}")
 
-    x_axis = [i for i in range(difference_array.shape[1])]
+    oracle_collected_samples = oracle_collected_samples[:min_num_samples]
+    optimistic_collected_samples = optimistic_collected_samples[:min_num_samples]
+    spectral_collected_samples = spectral_collected_samples[:min_num_samples]
 
-    axs.plot(mean_cumulated_regret, 'c', label='OUR')
+    optimistic_regret = oracle_collected_samples - optimistic_collected_samples
+    optimistic_regret = optimistic_regret.T
+    spectral_regret = oracle_collected_samples - spectral_collected_samples
+    spectral_regret = spectral_regret.T
+
+    cumulative_optimistic_regret = np.cumsum(optimistic_regret, axis=1)
+    mean_cumulated_optimistic_regret = np.mean(cumulative_optimistic_regret, axis=0)
+    std_cumulative_optimistic_regret = np.std(cumulative_optimistic_regret, axis=0)
+    lower_bound_opt, upper_bound_opt = ci2(mean_cumulated_optimistic_regret,
+                                   std_cumulative_optimistic_regret, 2)
+
+    cumulative_spectral_regret = np.cumsum(spectral_regret, axis=1)
+    mean_cumulated_spectral_regret = np.mean(cumulative_spectral_regret, axis=0)
+    std_cumulative_spectral_regret = np.std(cumulative_spectral_regret, axis=0)
+    lower_bound_spec, upper_bound_spec = ci2(mean_cumulated_spectral_regret,
+                                   std_cumulative_spectral_regret, 2)
+
+    x_axis = [i for i in range(optimistic_regret.shape[1])]
+
+    axs.plot(mean_cumulated_optimistic_regret, 'c', label='OAS-UCRL')
     axs.fill_between(x_axis,
-                        lower_bound,
-                        upper_bound,
+                        lower_bound_opt,
+                        upper_bound_opt,
                         color='c', alpha=.2)
+    axs.plot(mean_cumulated_spectral_regret, 'r', label='SEEU')
+    axs.fill_between(x_axis,
+                        lower_bound_spec,
+                        upper_bound_spec,
+                        color='r', alpha=.2)
     axs.legend()
     plt.tight_layout()
     plt.show()

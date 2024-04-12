@@ -13,7 +13,7 @@ class POMDP:
                  real_min_transition_value=None,
                  non_normalized_min_transition_value=0.25,
                  transition_multiplier=0,
-                 observation_multiplier=5):
+                 observation_multiplier=30):
         self.num_states = num_states
         self.num_actions = num_actions
         self.num_obs = num_observations
@@ -52,14 +52,18 @@ class POMDP:
                 axis=1)[:, None]
             if np.any(state_actions_matrix < min_transition_value):
                 modified_state_action_matrix = state_actions_matrix.copy()
-                counter = 1
-                while np.any(modified_state_action_matrix < min_transition_value):
-                    modified_state_action_matrix[state_actions_matrix < min_transition_value] = (
-                            min_transition_value + 0.05 * counter)
-                    modified_state_action_matrix = (modified_state_action_matrix /
-                                                    modified_state_action_matrix.sum(axis=1)[:, None])
-                    counter += 1
+                modified_state_action_matrix[
+                    state_actions_matrix < min_transition_value] += min_transition_value
+                modified_state_action_matrix = (modified_state_action_matrix /
+                                                modified_state_action_matrix.sum(axis=1)[:, None])
                 state_actions_matrix = modified_state_action_matrix
+                # while np.any(modified_state_action_matrix < min_transition_value):
+                #     modified_state_action_matrix[state_actions_matrix < min_transition_value] = (
+                #             min_transition_value + 0.2 * counter)
+                #     modified_state_action_matrix = (modified_state_action_matrix /
+                #                                     modified_state_action_matrix.sum(axis=1)[:, None])
+                #     counter += 1
+                # state_actions_matrix = modified_state_action_matrix
 
             if transition_matrix is None:
                 transition_matrix = state_actions_matrix
@@ -166,6 +170,8 @@ class POMDP:
         col_dim = self.num_actions**2 * self.num_states**2
         reference_matrix = np.zeros(shape=(row_dim, col_dim))
 
+        min_svd = 10
+
         for first_action in range(self.num_actions):
             for second_action in range(self.num_actions):
                 first_obs_mat = self.state_action_observation_matrix[:, first_action, :]
@@ -180,8 +186,15 @@ class POMDP:
                 reference_matrix[row_index:row_index + self.num_obs ** 2,
                 col_index:col_index + self.num_states ** 2] = kron
 
-        self.min_svd_reference_matrix = self.compute_min_svd(reference_matrix)
+                current_svd = self.compute_min_svd(kron)
+                if current_svd < min_svd:
+                    min_svd = current_svd
+
+        # self.min_svd_reference_matrix = self.compute_min_svd(reference_matrix)
+        self.min_svd_reference_matrix = min_svd
         print(f"Min svd of reference matrix is {self.min_svd_reference_matrix}")
+
+        # print(f"Iterative min svd of reference matrix is {min_svd}")
 
         return reference_matrix
 

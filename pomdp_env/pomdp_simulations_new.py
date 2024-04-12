@@ -5,9 +5,13 @@ import numpy as np
 
 from policies.belief_based_policy import BeliefBasedPolicy
 from pomdp_env import POMDP
+from strategy.PSRL.psrlStrategy import PSRLStrategy
 from strategy.optimisticAlgorithmStrategy import OptimisticAlgorithmStrategy
 from strategy.oracleStrategy import OracleStrategy
 from strategy.rebuttalEstErrExp import EstimationErrorStrategy
+from strategy.second_rebuttalEstErrExp import SecondEstimationErrorStrategy
+from strategy.spectralAlgorithmStrategy import SpectralAlgorithmStrategy
+
 
 class POMDPSimulationNew:
 
@@ -34,7 +38,12 @@ class POMDPSimulationNew:
 
     def generate_dirs(self, experiment_type):
 
-        dir_name = f"ICML_experiments/{self.num_states}states_{self.num_actions}actions_{self.num_obs}obs"
+        if experiment_type == "regret":
+            base_base = "ICML_experiments"
+        else:
+            base_base = "ICML_experiments_error"
+
+        dir_name = f"{base_base}/{self.num_states}states_{self.num_actions}actions_{self.num_obs}obs"
 
         if os.path.exists(dir_name):
             if self.loaded_pomdp:
@@ -68,7 +77,7 @@ class POMDPSimulationNew:
 
 
     def run_estimation_error(self, num_experiments: int, num_samples_to_discard: int,
-            num_samples_checkpoint: int, num_checkpoints: int):
+            num_samples_checkpoint: int, num_checkpoints: int, min_action_prob: float):
 
         # the different types of experiment types are "estimation_error" and "regret"
         self.generate_dirs(experiment_type="estimation_error")
@@ -96,20 +105,25 @@ class POMDPSimulationNew:
 
         self.error_frobenious_norm = np.empty(shape=(num_experiments, num_checkpoints))
 
+        # used policy
+        self.policy = BeliefBasedPolicy(
+            num_states=self.num_states,
+            num_actions=self.num_actions,
+            num_obs=self.num_obs,
+            min_action_prob=min_action_prob,
+            state_action_transition_matrix=self.pomdp.state_action_transition_matrix,
+            state_action_observation_matrix=self.pomdp.state_action_observation_matrix,
+            possible_rewards=self.pomdp.possible_rewards
+        )
+
         for n in range(num_experiments):
             print("Experiment_n: " + str(n))
 
             initial_state = np.random.random_integers(low=0, high=self.num_states-1)
 
-            # used policy
-            self.policy = BeliefBasedPolicy(
-                self.num_states, self.num_actions, self.num_obs,
-                self.pomdp.state_action_transition_matrix,
-                self.pomdp.state_action_observation_matrix,
-                self.pomdp.possible_rewards
-            )
+            self.policy.reset_belief()
 
-            self.estimation_error_strategy = EstimationErrorStrategy(
+            self.estimation_error_strategy = SecondEstimationErrorStrategy(
                 num_states=self.num_states,
                 num_actions=self.num_actions,
                 num_obs=self.num_obs,
@@ -129,8 +143,8 @@ class POMDPSimulationNew:
             self.estimated_transition_matrix[n] = estimated_transition_matrix
             self.error_frobenious_norm[n] = error_frobenious_norm
 
-        result_dict['estimated_action_state_dist'] = self.estimated_action_state_dist.tolist()
-        result_dict['estimated_transition_matrix'] = self.estimated_transition_matrix.tolist()
+        # result_dict['estimated_action_state_dist'] = self.estimated_action_state_dist.tolist()
+        # result_dict['estimated_transition_matrix'] = self.estimated_transition_matrix.tolist()
         result_dict['error_frobenious_norm'] = self.error_frobenious_norm.tolist()
 
         if not self.loaded_pomdp and self.save_pomdp_info:
@@ -169,9 +183,16 @@ class POMDPSimulationNew:
                               real_optimal_belief_action_mapping: np.ndarray = None,
                               initial_discretized_belief: np.ndarray = None,
                               initial_discretized_belief_index: int = None,
+                              tau_1: int = None,
+                              tau_2: int = None,
                               ):
 
-        # disable this for the moment
+        # just for testing
+        run_oracle = False
+        run_optimistic = False
+        run_spectral = False
+        run_psrl = True
+
         self.generate_dirs(experiment_type="regret")
         self.state_discretization_step = state_discretization_step
         self.min_action_prob = min_action_prob
@@ -212,6 +233,31 @@ class POMDPSimulationNew:
             epsilon_state=state_discretization_step,
             min_action_prob=min_action_prob,
             delta=delta,
+            discretized_belief_states=self.oracle_strategy.discretized_belief_states,
+            save_path=self.exp_type_path
+        )
+
+        self.spectral_algorithm_strategy = SpectralAlgorithmStrategy(
+            num_states=self.num_states,
+            num_actions=self.num_actions,
+            num_obs=self.num_obs,
+            pomdp=self.pomdp,
+            ext_v_i_stopping_cond=ext_v_i_stopping_cond,
+            epsilon_state=state_discretization_step,
+            min_action_prob=min_action_prob,
+            delta=delta,
+            discretized_belief_states=self.oracle_strategy.discretized_belief_states,
+            save_path=self.exp_type_path
+        )
+
+        self.psrl_algorithm_strategy = PSRLStrategy(
+            num_states=self.num_states,
+            num_actions=self.num_actions,
+            num_obs=self.num_obs,
+            pomdp=self.pomdp,
+            ext_v_i_stopping_cond=ext_v_i_stopping_cond,
+            epsilon_state=state_discretization_step,
+            min_action_prob=min_action_prob,
             discretized_belief_states=self.oracle_strategy.discretized_belief_states,
             save_path=self.exp_type_path
         )
@@ -259,6 +305,25 @@ class POMDPSimulationNew:
                     initial_state=optimistic_starting_state,
                 )
 
+            if run_spectral is True:
+                self.spectral_algorithm_strategy.run(
+                    tau_1=tau_1,
+                    tau_2=tau_2,
+                    starting_episode_num=starting_episode_num,
+                    num_episodes=num_episodes,
+                    experiment_num=n,
+                    initial_state=optimistic_starting_state,
+                )
+
+            if run_psrl is True:
+                self.psrl_algorithm_strategy.run(
+                    T_0=T_0,
+                    starting_episode_num=starting_episode_num,
+                    num_episodes=num_episodes,
+                    experiment_num=n,
+                    initial_state=optimistic_starting_state,
+                )
+
 
         if not self.loaded_pomdp and self.save_pomdp_info:
             f = open(self.pomdp_dir_path + '/pomdp_info.json', 'w')
@@ -278,30 +343,6 @@ class POMDPSimulationNew:
             f.write(json_file)
             f.close()
             print("Basic info have been saved")
-
-        # if self.save_results:
-        #     basic_info_path = f"/{state_discretization_step}stst_{action_discretization_step}acst_{min_action_prob}_minac"
-        #     dir_to_create_path = self.exp_type_path + basic_info_path
-        #     if os.path.exists(dir_to_create_path):
-        #         new_exp_index = len(os.listdir(dir_to_create_path))
-        #         if run_oracle:
-        #             f = open(
-        #                 dir_to_create_path + f'/oracle_{np.log(T_0)}Init_{num_episodes}Ep_{num_experiments}Exp_{new_exp_index-1}.json',
-        #                 'w')
-        #             json_file = json.dumps(oracle_result_dict)
-        #             f.write(json_file)
-        #             f.close()
-        #             print("Oracle Results have been saved")
-        #         if run_optimistic:
-        #             f = open(
-        #                 dir_to_create_path + f'/optimistic_{np.log(T_0)}Init_{num_episodes}Ep_{num_experiments}Exp_{new_exp_index-1}.json',
-        #                 'w')
-        #             json_file = json.dumps(optimistic_result_dict)
-        #             f.write(json_file)
-        #             f.close()
-        #             print("Optimistic Algorithm Results have been saved")
-        #     else:
-        #         raise ValueError("The folder does not exist")
 
 
     def restore_infos(self, T_0, starting_episode_num, run_oracle, run_optimistic, experiment_num):

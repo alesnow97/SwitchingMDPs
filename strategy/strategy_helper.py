@@ -262,6 +262,10 @@ def compute_optimistic_MDP(
     while not du.max() - du.min() < ext_v_i_stopping_cond:
         if counter % 5 == 0:
             print(counter)
+        if counter == 100:
+            print(f"Current difference is {du.max() - du.min()}")
+            print("CONVERGENCE ISSUES")
+            ext_v_i_stopping_cond = 1 + du.max() - du.min()
         counter += 1
         # Sort the states by their values in descending order
         rank = np.argsort(-u)
